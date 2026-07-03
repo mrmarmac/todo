@@ -8,9 +8,10 @@ interface Props {
   onCreate: (input: CreateTaskInput) => void;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
+  onAddToday: (id: string) => void;
 }
 
-export function MasterColumn({ tasks, onCreate, onUpdate, onDelete }: Props) {
+export function MasterColumn({ tasks, onCreate, onUpdate, onDelete, onAddToday }: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
 
   return (
@@ -19,7 +20,13 @@ export function MasterColumn({ tasks, onCreate, onUpdate, onDelete }: Props) {
       <AddTaskForm onCreate={onCreate} />
       <ul className="task-list">
         {masterTasks.map((task) => (
-          <MasterTask key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} />
+          <MasterTask
+            key={task.id}
+            task={task}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onAddToday={onAddToday}
+          />
         ))}
       </ul>
     </section>
@@ -75,10 +82,12 @@ function MasterTask({
   task,
   onUpdate,
   onDelete,
+  onAddToday,
 }: {
   task: Task;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
+  onAddToday: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -140,6 +149,9 @@ function MasterTask({
         {task.dueDate && <span className="task__due">{task.dueDate}</span>}
       </div>
       <div className="task__actions">
+        <button type="button" className="btn-primary" onClick={() => onAddToday(task.id)}>
+          → Today
+        </button>
         <button type="button" onClick={() => setEditing(true)}>
           Edit
         </button>
