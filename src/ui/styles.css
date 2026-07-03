@@ -197,3 +197,65 @@ button:disabled {
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.column__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.column__head h2 {
+  margin: 0 0 0.75rem;
+}
+
+.task--done {
+  background: var(--bg);
+  opacity: 0.75;
+}
+
+.task__title--done {
+  text-decoration: line-through;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.history {
+  padding: 0 1.5rem 2rem;
+}
+
+.history__body {
+  margin-top: 0.75rem;
+  background: var(--col-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.history__day + .history__day {
+  margin-top: 1rem;
+}
+
+.history__date {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.history__entry {
+  font-size: 0.9rem;
+}
+
+.history__entry--subtask {
+  padding-left: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

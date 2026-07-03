@@ -5,9 +5,10 @@ interface Props {
   tasks: Task[];
   onReorder: (id: string, targetIndex: number) => void;
   onRemove: (id: string) => void;
+  onComplete: (id: string) => void;
 }
 
-export function TodayColumn({ tasks, onReorder, onRemove }: Props) {
+export function TodayColumn({ tasks, onReorder, onRemove, onComplete }: Props) {
   const todayTasks = tasks.filter((t) => t.column === 'today');
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -57,6 +58,20 @@ export function TodayColumn({ tasks, onReorder, onRemove }: Props) {
               {task.dueDate && <span className="task__due">{task.dueDate}</span>}
             </div>
             <div className="task__actions">
+              {(() => {
+                const openSubtasks = task.subtasks.some((s) => !s.isCompleted);
+                return (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={openSubtasks}
+                    title={openSubtasks ? 'Finish all subtasks first' : undefined}
+                    onClick={() => onComplete(task.id)}
+                  >
+                    Complete
+                  </button>
+                );
+              })()}
               <button type="button" onClick={() => onRemove(task.id)}>
                 Remove
               </button>
