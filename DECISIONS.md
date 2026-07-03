@@ -11,3 +11,4 @@
 - **D9** Day-copies get `isRecurring: false`; provenance lives in `sourceTaskId` — the copy is an ordinary Today task, keeps sorting and deletion rules simple. — 2026-07-03 (spec review)
 - **D10** Architecture: pure TypeScript core (state.ts et al.) with thin React shell — makes every spec rule unit-testable without a browser; suits red/green TDD. — 2026-07-03 (spec review)
 - **D11** `completeTask` throws on open subtasks (rather than silently no-op) — the parent gate is a business-rule violation like an empty title, so a hard error is clearer; the UI also disables the Complete button as a first line of defence. — 2026-07-03 (slice 3)
+- **D12** Subtask ops guard the "done never holds an open subtask" invariant by no-op: `addSubtask` and `uncompleteSubtask` do nothing on a Done parent (empty title still throws, matching D11's title rule) — keeps the model always valid; the undo flow is Done→Today first, then un-tick. — 2026-07-03 (slice 4)

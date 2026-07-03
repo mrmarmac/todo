@@ -117,6 +117,7 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .task--recurring {
@@ -258,4 +259,79 @@ button:disabled {
   padding-left: 1rem;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+/* Subtasks (SPEC §6.4) */
+.subtasks,
+.subtask-list {
+  flex-basis: 100%;
+}
+
+.subtask-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.subtask {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.subtask__check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.subtask__title--done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.subtask__actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.subtask__actions button {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.subtask__edit {
+  display: flex;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.subtask__edit input[type='text'] {
+  flex: 1;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.subtask-add {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding-left: 0.25rem;
+}
+
+.subtask-add input[type='text'] {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
 }

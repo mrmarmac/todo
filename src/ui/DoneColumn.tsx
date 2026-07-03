@@ -1,4 +1,13 @@
 import type { Task } from '../core/types';
+import { SubtaskList } from './SubtaskList';
+
+const noopSubtaskHandlers = {
+  onAddSubtask: () => {},
+  onUpdateSubtask: () => {},
+  onDeleteSubtask: () => {},
+  onCompleteSubtask: () => {},
+  onUncompleteSubtask: () => {},
+};
 
 interface Props {
   tasks: Task[];
@@ -32,6 +41,7 @@ export function DoneColumn({ tasks, onUncomplete, onClear }: Props) {
                 Undo
               </button>
             </div>
+            <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />
           </li>
         ))}
       </ul>

@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import type { Task } from '../core/types';
+import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 
 interface Props {
   tasks: Task[];
   onReorder: (id: string, targetIndex: number) => void;
   onRemove: (id: string) => void;
   onComplete: (id: string) => void;
+  subtaskHandlers: SubtaskHandlers;
 }
 
-export function TodayColumn({ tasks, onReorder, onRemove, onComplete }: Props) {
+export function TodayColumn({ tasks, onReorder, onRemove, onComplete, subtaskHandlers }: Props) {
   const todayTasks = tasks.filter((t) => t.column === 'today');
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -76,6 +78,7 @@ export function TodayColumn({ tasks, onReorder, onRemove, onComplete }: Props) {
                 Remove
               </button>
             </div>
+            <SubtaskList task={task} {...subtaskHandlers} />
           </li>
         ))}
       </ul>

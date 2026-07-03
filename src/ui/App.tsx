@@ -10,7 +10,13 @@ import {
   completeTask,
   uncompleteTask,
   clearDone,
+  addSubtask,
+  updateSubtask,
+  deleteSubtask,
+  completeSubtask,
+  uncompleteSubtask,
 } from '../core/state';
+import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
 import { MasterColumn } from './MasterColumn';
 import { TodayColumn } from './TodayColumn';
@@ -25,6 +31,17 @@ export function App() {
     save(state);
   }, [state]);
 
+  const subtaskHandlers: SubtaskHandlers = {
+    onAddSubtask: (taskId, title) => setState((s) => addSubtask(s, taskId, title)),
+    onUpdateSubtask: (taskId, subtaskId, patch) =>
+      setState((s) => updateSubtask(s, taskId, subtaskId, patch)),
+    onDeleteSubtask: (taskId, subtaskId) => setState((s) => deleteSubtask(s, taskId, subtaskId)),
+    onCompleteSubtask: (taskId, subtaskId) =>
+      setState((s) => completeSubtask(s, taskId, subtaskId)),
+    onUncompleteSubtask: (taskId, subtaskId) =>
+      setState((s) => uncompleteSubtask(s, taskId, subtaskId)),
+  };
+
   return (
     <div className="app">
       <header className="app__header">
@@ -37,12 +54,14 @@ export function App() {
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
           onDelete={(id) => setState((s) => deleteTask(s, id))}
           onAddToday={(id) => setState((s) => moveToToday(s, id))}
+          subtaskHandlers={subtaskHandlers}
         />
         <TodayColumn
           tasks={state.tasks}
           onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
           onRemove={(id) => setState((s) => removeFromToday(s, id))}
           onComplete={(id) => setState((s) => completeTask(s, id))}
+          subtaskHandlers={subtaskHandlers}
         />
         <DoneColumn
           tasks={state.tasks}
