@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
+import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 
 interface Props {
   tasks: Task[];
@@ -9,9 +10,17 @@ interface Props {
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
   onAddToday: (id: string) => void;
+  subtaskHandlers: SubtaskHandlers;
 }
 
-export function MasterColumn({ tasks, onCreate, onUpdate, onDelete, onAddToday }: Props) {
+export function MasterColumn({
+  tasks,
+  onCreate,
+  onUpdate,
+  onDelete,
+  onAddToday,
+  subtaskHandlers,
+}: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
 
   return (
@@ -26,6 +35,7 @@ export function MasterColumn({ tasks, onCreate, onUpdate, onDelete, onAddToday }
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAddToday={onAddToday}
+            subtaskHandlers={subtaskHandlers}
           />
         ))}
       </ul>
@@ -83,11 +93,13 @@ function MasterTask({
   onUpdate,
   onDelete,
   onAddToday,
+  subtaskHandlers,
 }: {
   task: Task;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
   onAddToday: (id: string) => void;
+  subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -159,6 +171,7 @@ function MasterTask({
           Delete
         </button>
       </div>
+      <SubtaskList task={task} {...subtaskHandlers} />
     </li>
   );
 }

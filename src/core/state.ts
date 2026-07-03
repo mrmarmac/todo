@@ -1,4 +1,4 @@
-import type { AppState, HistoryEntry, Task } from './types';
+import type { AppState, HistoryEntry, Subtask, Task } from './types';
 
 /** Format a Date as an ISO calendar date (YYYY-MM-DD) in local time. */
 export function toISODate(date: Date): string {
@@ -164,6 +164,84 @@ export function uncompleteTask(state: AppState, id: string): AppState {
   const others = state.tasks.filter((t) => t.id !== id);
   const moved: Task = { ...source, column: 'today' };
   return { ...state, tasks: [...others, moved] };
+}
+
+/** Replace the subtasks of one task, leaving every other task untouched. */
+function mapSubtasks(
+  state: AppState,
+  taskId: string,
+  fn: (subtasks: Subtask[]) => Subtask[],
+): AppState {
+  const tasks = state.tasks.map((t) =>
+    t.id === taskId ? { ...t, subtasks: fn(t.subtasks) } : t,
+  );
+  return { ...state, tasks };
+}
+
+/**
+ * Add a subtask (SPEC §6.4) to any non-Done task, appended in creation order
+ * (D7). Rejects an empty/whitespace title. No-op on a Done task — a done task
+ * must never hold an open subtask — or an unknown id.
+ */
+export function addSubtask(state: AppState, taskId: string, title: string): AppState {
+  const parent = state.tasks.find((t) => t.id === taskId);
+  if (!parent || parent.column === 'done') return state;
+
+  const trimmed = title.trim();
+  if (trimmed === '') throw new Error('Subtask title is required');
+
+  const subtask: Subtask = { id: newId(), title: trimmed, isCompleted: false, isActive: false };
+  return mapSubtasks(state, taskId, (subs) => [...subs, subtask]);
+}
+
+/** Edit a subtask's title. Rejects empty; no-op for an unknown subtask. */
+export function updateSubtask(
+  state: AppState,
+  taskId: string,
+  subtaskId: string,
+  patch: { title?: string },
+): AppState {
+  return mapSubtasks(state, taskId, (subs) =>
+    subs.map((s) => {
+      if (s.id !== subtaskId) return s;
+      const next: Subtask = { ...s };
+      if (patch.title !== undefined) {
+        const title = patch.title.trim();
+        if (title === '') throw new Error('Subtask title is required');
+        next.title = title;
+      }
+      return next;
+    }),
+  );
+}
+
+/** Delete a subtask; no-op for an unknown subtask. */
+export function deleteSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
+  return mapSubtasks(state, taskId, (subs) => subs.filter((s) => s.id !== subtaskId));
+}
+
+/**
+ * Tick a subtask complete (SPEC §6.4), clearing its active flag. No-op for an
+ * unknown subtask.
+ */
+export function completeSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
+  return mapSubtasks(state, taskId, (subs) =>
+    subs.map((s) => (s.id === subtaskId ? { ...s, isCompleted: true, isActive: false } : s)),
+  );
+}
+
+/**
+ * Un-tick a completed subtask (D5), allowed until its parent is cleared to
+ * History. No-op when the parent is in Done — a done task must never hold an
+ * open subtask; undo the parent completion first.
+ */
+export function uncompleteSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
+  const parent = state.tasks.find((t) => t.id === taskId);
+  if (!parent || parent.column === 'done') return state;
+
+  return mapSubtasks(state, taskId, (subs) =>
+    subs.map((s) => (s.id === subtaskId ? { ...s, isCompleted: false } : s)),
+  );
 }
 
 /**
