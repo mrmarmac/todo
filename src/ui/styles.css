@@ -176,6 +176,42 @@ button:disabled {
   opacity: 0.4;
 }
 
+/* Active item (SPEC §6.8) — exactly one clearly highlighted task/subtask. */
+.task--active {
+  border-color: var(--accent);
+  background: #eef5fe;
+  box-shadow: 0 0 0 2px rgba(11, 116, 222, 0.35);
+}
+
+/* Clickable title used to set/unset active — reset button chrome to look like text. */
+.task__activate,
+.subtask__activate {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.task__activate {
+  font-weight: 500;
+}
+
+.task__activate:hover:not(:disabled),
+.subtask__activate:hover:not(:disabled) {
+  color: var(--accent);
+  border: none;
+}
+
+.task__title--active,
+.subtask__title--active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .task--drop-target {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(11, 116, 222, 0.25);

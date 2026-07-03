@@ -7,6 +7,7 @@ const noopSubtaskHandlers = {
   onDeleteSubtask: () => {},
   onCompleteSubtask: () => {},
   onUncompleteSubtask: () => {},
+  onSetActiveSubtask: () => {},
 };
 
 interface Props {

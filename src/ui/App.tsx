@@ -15,6 +15,8 @@ import {
   deleteSubtask,
   completeSubtask,
   uncompleteSubtask,
+  setActive,
+  setActiveSubtask,
 } from '../core/state';
 import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
@@ -40,6 +42,8 @@ export function App() {
       setState((s) => completeSubtask(s, taskId, subtaskId)),
     onUncompleteSubtask: (taskId, subtaskId) =>
       setState((s) => uncompleteSubtask(s, taskId, subtaskId)),
+    onSetActiveSubtask: (taskId, subtaskId) =>
+      setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
   return (
@@ -61,6 +65,7 @@ export function App() {
           onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
           onRemove={(id) => setState((s) => removeFromToday(s, id))}
           onComplete={(id) => setState((s) => completeTask(s, id))}
+          onSetActive={(id) => setState((s) => setActive(s, id))}
           subtaskHandlers={subtaskHandlers}
         />
         <DoneColumn

@@ -7,10 +7,18 @@ interface Props {
   onReorder: (id: string, targetIndex: number) => void;
   onRemove: (id: string) => void;
   onComplete: (id: string) => void;
+  onSetActive: (id: string) => void;
   subtaskHandlers: SubtaskHandlers;
 }
 
-export function TodayColumn({ tasks, onReorder, onRemove, onComplete, subtaskHandlers }: Props) {
+export function TodayColumn({
+  tasks,
+  onReorder,
+  onRemove,
+  onComplete,
+  onSetActive,
+  subtaskHandlers,
+}: Props) {
   const todayTasks = tasks.filter((t) => t.column === 'today');
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -33,6 +41,7 @@ export function TodayColumn({ tasks, onReorder, onRemove, onComplete, subtaskHan
             key={task.id}
             className={
               'task task--today' +
+              (task.isActive ? ' task--active' : '') +
               (draggingId === task.id ? ' task--dragging' : '') +
               (overIndex === index ? ' task--drop-target' : '')
             }
@@ -55,7 +64,14 @@ export function TodayColumn({ tasks, onReorder, onRemove, onComplete, subtaskHan
               <span className="task__drag-handle" aria-hidden="true">
                 ⠿
               </span>
-              <span className="task__title">{task.title}</span>
+              <button
+                type="button"
+                className={'task__title task__activate' + (task.isActive ? ' task__title--active' : '')}
+                title={task.isActive ? 'Unset active' : 'Set as active'}
+                onClick={() => onSetActive(task.id)}
+              >
+                {task.title}
+              </button>
               {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
               {task.dueDate && <span className="task__due">{task.dueDate}</span>}
             </div>
@@ -78,7 +94,7 @@ export function TodayColumn({ tasks, onReorder, onRemove, onComplete, subtaskHan
                 Remove
               </button>
             </div>
-            <SubtaskList task={task} {...subtaskHandlers} />
+            <SubtaskList task={task} activatable {...subtaskHandlers} />
           </li>
         ))}
       </ul>
