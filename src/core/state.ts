@@ -1,4 +1,4 @@
-import type { AppState, Task } from './types';
+import type { AppState, HistoryEntry, Task } from './types';
 
 /** Format a Date as an ISO calendar date (YYYY-MM-DD) in local time. */
 export function toISODate(date: Date): string {
@@ -130,4 +130,84 @@ export function reorderToday(state: AppState, id: string, targetIndex: number): 
   let i = 0;
   const tasks = state.tasks.map((t) => (t.column === 'today' ? reordered[i++] : t));
   return { ...state, tasks };
+}
+
+/**
+ * Complete a Today task (SPEC §6.5): move it to Done and clear its active flag.
+ * Rejected while any subtask is still open — a parent cannot complete with an
+ * open subtask. No-op if the id is not a Today task.
+ */
+export function completeTask(state: AppState, id: string): AppState {
+  const source = state.tasks.find((t) => t.id === id);
+  if (!source || source.column !== 'today') return state;
+
+  if (source.subtasks.some((s) => !s.isCompleted)) {
+    throw new Error('Cannot complete a task with open subtasks');
+  }
+
+  return {
+    ...state,
+    tasks: state.tasks.map((t) =>
+      t.id === id ? { ...t, column: 'done', isActive: false } : t,
+    ),
+  };
+}
+
+/**
+ * Undo a completion (D5): return a Done task to the end of the Today order.
+ * No-op if the id is not a Done task.
+ */
+export function uncompleteTask(state: AppState, id: string): AppState {
+  const source = state.tasks.find((t) => t.id === id);
+  if (!source || source.column !== 'done') return state;
+
+  const others = state.tasks.filter((t) => t.id !== id);
+  const moved: Task = { ...source, column: 'today' };
+  return { ...state, tasks: [...others, moved] };
+}
+
+/**
+ * Collapse Done into History (SPEC §6.6). Each Done task produces one `task`
+ * History entry plus one `subtask` entry per completed subtask (carrying its
+ * parentTaskId), all stamped with the current day and `now`. Cleared tasks are
+ * removed from `tasks`; Today and Master are untouched. No-op when Done is empty
+ * and repeatable any number of times.
+ */
+export function clearDone(state: AppState, now: Date): AppState {
+  const doneTasks = state.tasks.filter((t) => t.column === 'done');
+  if (doneTasks.length === 0) return state;
+
+  const completedAt = now.toISOString();
+  const day = state.currentDay;
+  const entries: HistoryEntry[] = [];
+
+  for (const t of doneTasks) {
+    entries.push({
+      id: newId(),
+      occurrenceType: 'task',
+      taskId: t.id,
+      parentTaskId: null,
+      title: t.title,
+      completedAt,
+      day,
+    });
+    for (const s of t.subtasks) {
+      if (!s.isCompleted) continue;
+      entries.push({
+        id: newId(),
+        occurrenceType: 'subtask',
+        taskId: s.id,
+        parentTaskId: t.id,
+        title: s.title,
+        completedAt,
+        day,
+      });
+    }
+  }
+
+  return {
+    ...state,
+    tasks: state.tasks.filter((t) => t.column !== 'done'),
+    history: [...state.history, ...entries],
+  };
 }

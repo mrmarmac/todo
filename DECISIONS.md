@@ -10,3 +10,4 @@
 - **D8** History UI is a minimal read-only toggle panel grouped by day, newest first — spec defined History data but no display. — 2026-07-03 (spec review)
 - **D9** Day-copies get `isRecurring: false`; provenance lives in `sourceTaskId` — the copy is an ordinary Today task, keeps sorting and deletion rules simple. — 2026-07-03 (spec review)
 - **D10** Architecture: pure TypeScript core (state.ts et al.) with thin React shell — makes every spec rule unit-testable without a browser; suits red/green TDD. — 2026-07-03 (spec review)
+- **D11** `completeTask` throws on open subtasks (rather than silently no-op) — the parent gate is a business-rule violation like an empty title, so a hard error is clearer; the UI also disables the Complete button as a first line of defence. — 2026-07-03 (slice 3)
