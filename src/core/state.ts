@@ -107,9 +107,19 @@ export function removeFromToday(state: AppState, id: string): AppState {
   if (source.sourceTaskId !== null) {
     return { ...state, tasks: state.tasks.filter((t) => t.id !== id) };
   }
+  // A returning task cannot stay active (active ⇒ Today): clear its flags.
   return {
     ...state,
-    tasks: state.tasks.map((t) => (t.id === id ? { ...t, column: 'master' } : t)),
+    tasks: state.tasks.map((t) =>
+      t.id === id
+        ? {
+            ...t,
+            column: 'master',
+            isActive: false,
+            subtasks: t.subtasks.map((s) => ({ ...s, isActive: false })),
+          }
+        : t,
+    ),
   };
 }
 
@@ -288,4 +298,65 @@ export function clearDone(state: AppState, now: Date): AppState {
     tasks: state.tasks.filter((t) => t.column !== 'done'),
     history: [...state.history, ...entries],
   };
+}
+
+/** Clear every active flag across all tasks and their subtasks (invariant helper). */
+function clearAllActiveFlags(tasks: Task[]): Task[] {
+  return tasks.map((t) => ({
+    ...t,
+    isActive: false,
+    subtasks: t.subtasks.map((s) => ({ ...s, isActive: false })),
+  }));
+}
+
+/**
+ * Set a Today task as the single active item (SPEC §6.8). Clears any previously
+ * active task or subtask first. Clicking the already-active task toggles it off.
+ * No-op unless the task exists and is in Today.
+ */
+export function setActive(state: AppState, taskId: string): AppState {
+  const target = state.tasks.find((t) => t.id === taskId);
+  if (!target || target.column !== 'today') return state;
+
+  const cleared = clearAllActiveFlags(state.tasks);
+  if (target.isActive) return { ...state, tasks: cleared }; // toggle off
+
+  return {
+    ...state,
+    tasks: cleared.map((t) => (t.id === taskId ? { ...t, isActive: true } : t)),
+  };
+}
+
+/**
+ * Set a subtask as the single active item (SPEC §6.8). The parent must be in
+ * Today. Clears any previously active task or subtask first; clicking the
+ * already-active subtask toggles it off. No-op for an unknown subtask.
+ */
+export function setActiveSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
+  const parent = state.tasks.find((t) => t.id === taskId);
+  if (!parent || parent.column !== 'today') return state;
+  const target = parent.subtasks.find((s) => s.id === subtaskId);
+  if (!target) return state;
+
+  const cleared = clearAllActiveFlags(state.tasks);
+  if (target.isActive) return { ...state, tasks: cleared }; // toggle off
+
+  return {
+    ...state,
+    tasks: cleared.map((t) =>
+      t.id === taskId
+        ? {
+            ...t,
+            subtasks: t.subtasks.map((s) =>
+              s.id === subtaskId ? { ...s, isActive: true } : s,
+            ),
+          }
+        : t,
+    ),
+  };
+}
+
+/** Un-set any active item (SPEC §6.8). */
+export function clearActive(state: AppState): AppState {
+  return { ...state, tasks: clearAllActiveFlags(state.tasks) };
 }

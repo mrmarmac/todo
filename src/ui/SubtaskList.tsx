@@ -7,15 +7,18 @@ export interface SubtaskHandlers {
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
   onCompleteSubtask: (taskId: string, subtaskId: string) => void;
   onUncompleteSubtask: (taskId: string, subtaskId: string) => void;
+  onSetActiveSubtask: (taskId: string, subtaskId: string) => void;
 }
 
 interface Props extends SubtaskHandlers {
   task: Task;
   /** Read-only rendering (Done column): show subtasks struck-through, no controls. */
   readOnly?: boolean;
+  /** Today only: subtask titles are clickable to set/unset active (SPEC §6.8). */
+  activatable?: boolean;
 }
 
-export function SubtaskList({ task, readOnly = false, ...h }: Props) {
+export function SubtaskList({ task, readOnly = false, activatable = false, ...h }: Props) {
   if (readOnly) {
     if (task.subtasks.length === 0) return null;
     return (
@@ -37,7 +40,7 @@ export function SubtaskList({ task, readOnly = false, ...h }: Props) {
     <div className="subtasks">
       <ul className="subtask-list">
         {task.subtasks.map((s) => (
-          <SubtaskRow key={s.id} taskId={task.id} subtask={s} {...h} />
+          <SubtaskRow key={s.id} taskId={task.id} subtask={s} activatable={activatable} {...h} />
         ))}
       </ul>
       <AddSubtaskForm taskId={task.id} onAddSubtask={h.onAddSubtask} />
@@ -48,11 +51,17 @@ export function SubtaskList({ task, readOnly = false, ...h }: Props) {
 function SubtaskRow({
   taskId,
   subtask,
+  activatable,
   onUpdateSubtask,
   onDeleteSubtask,
   onCompleteSubtask,
   onUncompleteSubtask,
-}: SubtaskHandlers & { taskId: string; subtask: Task['subtasks'][number] }) {
+  onSetActiveSubtask,
+}: SubtaskHandlers & {
+  taskId: string;
+  subtask: Task['subtasks'][number];
+  activatable: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(subtask.title);
 
@@ -89,11 +98,17 @@ function SubtaskRow({
     );
   }
 
+  const titleClass =
+    'subtask__title' +
+    (subtask.isCompleted ? ' subtask__title--done' : '') +
+    (subtask.isActive ? ' subtask__title--active' : '');
+
   return (
-    <li className="subtask">
-      <label className="subtask__check">
+    <li className={'subtask' + (subtask.isActive ? ' subtask--active' : '')}>
+      <span className="subtask__check">
         <input
           type="checkbox"
+          aria-label={`Complete ${subtask.title}`}
           checked={subtask.isCompleted}
           onChange={(e) =>
             e.target.checked
@@ -101,12 +116,19 @@ function SubtaskRow({
               : onUncompleteSubtask(taskId, subtask.id)
           }
         />
-        <span
-          className={'subtask__title' + (subtask.isCompleted ? ' subtask__title--done' : '')}
-        >
-          {subtask.title}
-        </span>
-      </label>
+        {activatable ? (
+          <button
+            type="button"
+            className={titleClass + ' subtask__activate'}
+            title={subtask.isActive ? 'Unset active' : 'Set as active'}
+            onClick={() => onSetActiveSubtask(taskId, subtask.id)}
+          >
+            {subtask.title}
+          </button>
+        ) : (
+          <span className={titleClass}>{subtask.title}</span>
+        )}
+      </span>
       <span className="subtask__actions">
         <button type="button" onClick={() => setEditing(true)}>
           Edit
