@@ -78,7 +78,7 @@ Tasks can be edited and deleted from any column.
 ### 6.3 Plan Today
 Select task/s from Master, click to add to Today.
 - A normal task moves — it leaves Master.
-- A recurring task stays in Master; the add creates a **day-copy** in Today (`sourceTaskId` → master). The day-copy inherits the master's subtasks. Edits to the day-copy do not touch the master, and vice versa.
+- A recurring task stays in Master; the add creates a **day-copy** in Today (`sourceTaskId` → master). The day-copy inherits the master's subtasks with completion state reset — a fresh occurrence starts with all subtasks open. Edits to the day-copy do not touch the master, and vice versa.
 
 Tasks in Today reorder by drag and drop.
 
@@ -88,8 +88,9 @@ Tasks in Today reorder by drag and drop.
 Any task can hold subtasks. Subtasks keep creation order (no drag reorder in MVP).
 - Completing all subtasks does **not** auto-complete the parent.
 - A parent **cannot** be completed while any subtask is open.
+- Ticking and un-ticking subtasks is a Today activity: subtasks of a task sitting in Master are not tickable (a recurring master is a template; its day-copies track the day's actual work).
 - A completed subtask shows strikethrough in place under its parent and stays in Today. It is never independent: it travels to History only when its parent completes and is collapsed.
-- A completed subtask can be un-ticked (undo) while its parent is not yet cleared to History.
+- A completed subtask can be un-ticked (undo) while its parent is still in Today. Once the parent sits in Done, undo the parent first (Done → Today), then un-tick (D12).
 
 ### 6.5 Complete a Task
 Marking a task complete (allowed only when all its subtasks are complete):
@@ -111,7 +112,7 @@ In order:
 5. `currentDay` advances to today's date.
 
 ### 6.8 Set Active
-Set one task or subtask as active. Clears any previous active item. The active item must be in Today (subtask: parent in Today). Highlighted in the UI. Clicking the active item again un-sets it.
+Set one task or subtask as active. Clears any previous active item. The active item must be in Today (subtask: parent in Today), and a completed subtask cannot be set active. Highlighted in the UI. Clicking the active item again un-sets it.
 
 ## 7. Sorting
 
@@ -159,4 +160,4 @@ Interactions: click to move task from Master→Today, remove control on Today ta
 10. Master sorts by due date, then no due date, then recurring last.
 11. Tasks editable and deletable from any column, with the recurring-master deletion rule honoured.
 12. Full app state exports to JSON and restores via import.
-13. Completions can be undone (Done→Today, subtask un-tick) until cleared to History; Today tasks can be manually returned to Master.
+13. Completions can be undone (Done→Today; subtask un-tick while the parent is in Today) until cleared to History; Today tasks can be manually returned to Master.
