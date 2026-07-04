@@ -17,6 +17,7 @@ import {
   uncompleteSubtask,
   setActive,
   setActiveSubtask,
+  startNewDay,
 } from '../core/state';
 import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
@@ -46,10 +47,25 @@ export function App() {
       setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
+  const handleStartNewDay = () => {
+    const ok = window.confirm(
+      'Start a new day?\n\n' +
+        'This collapses Done into History, returns unfinished tasks to Master, ' +
+        'and discards unfinished recurring day-copies. This cannot be undone.',
+    );
+    if (ok) setState((s) => startNewDay(s, new Date()));
+  };
+
   return (
     <div className="app">
       <header className="app__header">
         <h1>To-Do</h1>
+        <div className="app__day">
+          <span className="app__day-label">Day: {state.currentDay}</span>
+          <button type="button" className="app__new-day" onClick={handleStartNewDay}>
+            Start New Day
+          </button>
+        </div>
       </header>
       <main className="board">
         <MasterColumn

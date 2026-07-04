@@ -300,6 +300,38 @@ export function clearDone(state: AppState, now: Date): AppState {
   };
 }
 
+/**
+ * Advance to a new day (SPEC §6.7, D3/D4), executing in order:
+ * 1. Collapse Done into History under the OLD currentDay (as if Clear were pressed).
+ * 2. Discard unfinished recurring day-copies (sourceTaskId set) still in Today —
+ *    their masters already sit in Master; nothing is logged.
+ * 3. Return remaining unfinished Today tasks to Master, resetting their subtasks
+ *    to incomplete; nothing is logged (no occurrence happened).
+ * 4. Clear any active flag.
+ * 5. Advance currentDay to the date from `now`.
+ */
+export function startNewDay(state: AppState, now: Date): AppState {
+  // Step 1: collapse Done under the old day (still current here).
+  const collapsed = clearDone(state, now);
+
+  const tasks = clearAllActiveFlags(collapsed.tasks) // step 4
+    // Step 2: drop unfinished day-copies left in Today.
+    .filter((t) => !(t.column === 'today' && t.sourceTaskId !== null))
+    // Step 3: return remaining Today tasks to Master, resetting subtasks.
+    .map((t) =>
+      t.column === 'today'
+        ? {
+            ...t,
+            column: 'master' as const,
+            subtasks: t.subtasks.map((s) => ({ ...s, isCompleted: false })),
+          }
+        : t,
+    );
+
+  // Step 5: advance the day.
+  return { ...collapsed, tasks, currentDay: toISODate(now) };
+}
+
 /** Clear every active flag across all tasks and their subtasks (invariant helper). */
 function clearAllActiveFlags(tasks: Task[]): Task[] {
   return tasks.map((t) => ({
