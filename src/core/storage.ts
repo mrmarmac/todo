@@ -8,7 +8,7 @@ export function save(state: AppState): void {
 }
 
 /** True when the parsed value has the minimum shape of an AppState. */
-function isAppState(value: unknown): value is AppState {
+export function isAppState(value: unknown): value is AppState {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
