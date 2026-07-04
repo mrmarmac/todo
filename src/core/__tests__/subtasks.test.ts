@@ -136,6 +136,20 @@ describe('completeSubtask (D5)', () => {
     const s0 = stateWith([task({ id: 'a', column: 'today', subtasks: [subtask({ id: 's1' })] })]);
     expect(completeSubtask(s0, 'a', 'nope')).toEqual(s0);
   });
+
+  it('is a no-op when the parent is a master task (D18: master is a template)', () => {
+    const s0 = stateWith([
+      task({ id: 'm', column: 'master', subtasks: [subtask({ id: 's1' })] }),
+    ]);
+    expect(completeSubtask(s0, 'm', 's1')).toEqual(s0);
+  });
+
+  it('is a no-op when the parent is a done task (D18)', () => {
+    const s0 = stateWith([
+      task({ id: 'a', column: 'done', subtasks: [subtask({ id: 's1' })] }),
+    ]);
+    expect(completeSubtask(s0, 'a', 's1')).toEqual(s0);
+  });
 });
 
 describe('uncompleteSubtask (D5)', () => {
@@ -152,6 +166,13 @@ describe('uncompleteSubtask (D5)', () => {
       task({ id: 'a', column: 'done', subtasks: [subtask({ id: 's1', isCompleted: true })] }),
     ]);
     expect(uncompleteSubtask(s0, 'a', 's1')).toEqual(s0);
+  });
+
+  it('is a no-op when the parent is a master task (D18: master is a template)', () => {
+    const s0 = stateWith([
+      task({ id: 'm', column: 'master', subtasks: [subtask({ id: 's1', isCompleted: true })] }),
+    ]);
+    expect(uncompleteSubtask(s0, 'm', 's1')).toEqual(s0);
   });
 });
 
@@ -183,5 +204,19 @@ describe('day-copy subtask isolation (extends Slice 2)', () => {
 
     expect(subs(s, copy.id)[0].isCompleted).toBe(true);
     expect(subs(s, 'm')[0].isCompleted).toBe(false);
+  });
+
+  it('resets inherited subtask completion to open on the day-copy (D19)', () => {
+    const master = task({
+      id: 'm',
+      isRecurring: true,
+      subtasks: [
+        subtask({ id: 'ms1', title: 'warm up', isCompleted: true }),
+        subtask({ id: 'ms2', title: 'stretch', isCompleted: true }),
+      ],
+    });
+    const s = moveToToday(stateWith([master]), 'm');
+    const copy = s.tasks.find((t) => t.column === 'today')!;
+    expect(copy.subtasks.every((x) => x.isCompleted === false)).toBe(true);
   });
 });
