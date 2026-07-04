@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   setActive,
   setActiveSubtask,
-  clearActive,
   removeFromToday,
   completeTask,
   completeSubtask,
@@ -142,23 +141,13 @@ describe('setActiveSubtask', () => {
     expect(findSub(s, 'b', 's1').isActive).toBe(true);
     expect(activeCount(s)).toBe(1);
   });
-});
 
-describe('clearActive', () => {
-  it('clears an active task', () => {
-    let s = setActive(stateWith([task({ id: 'a', column: 'today' })]), 'a');
-    s = clearActive(s);
-    expect(activeCount(s)).toBe(0);
-  });
-
-  it('clears an active subtask', () => {
-    let s = setActiveSubtask(
-      stateWith([task({ id: 'a', column: 'today', subtasks: [subtask({ id: 's1' })] })]),
-      'a',
-      's1',
-    );
-    s = clearActive(s);
-    expect(activeCount(s)).toBe(0);
+  it('is a no-op on a completed subtask (D20: active ⇒ open item)', () => {
+    const s0 = stateWith([
+      task({ id: 'a', column: 'today', subtasks: [subtask({ id: 's1', isCompleted: true })] }),
+    ]);
+    expect(setActiveSubtask(s0, 'a', 's1')).toEqual(s0);
+    expect(activeCount(setActiveSubtask(s0, 'a', 's1'))).toBe(0);
   });
 });
 
@@ -185,6 +174,22 @@ describe('auto-clear active on other operations', () => {
   it('completeTask leaves nothing active when the active task is completed', () => {
     let s = setActive(stateWith([task({ id: 'a', column: 'today' })]), 'a');
     s = completeTask(s, 'a');
+    expect(activeCount(s)).toBe(0);
+  });
+
+  it('completeTask clears an active flag sitting on a completed subtask (D20)', () => {
+    // A subtask carrying isActive alongside isCompleted is an off-path state;
+    // completeTask must still scrub it so Done never carries an active subtask.
+    const s0 = stateWith([
+      task({
+        id: 'a',
+        column: 'today',
+        subtasks: [subtask({ id: 's1', isCompleted: true, isActive: true })],
+      }),
+    ]);
+    const s = completeTask(s0, 'a');
+    expect(find(s, 'a').column).toBe('done');
+    expect(findSub(s, 'a', 's1').isActive).toBe(false);
     expect(activeCount(s)).toBe(0);
   });
 

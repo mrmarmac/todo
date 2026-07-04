@@ -70,8 +70,9 @@ export function deleteTask(state: AppState, id: string): AppState {
  * - A normal task moves: its column becomes 'today' and it is appended at the
  *   bottom of the Today order (moved to the end of the array).
  * - A recurring task stays in Master; a fresh day-copy is appended to Today with
- *   a new id, deep-copied subtasks, isRecurring cleared, and sourceTaskId set to
- *   the master's id (D9).
+ *   a new id, deep-copied subtasks (each reset to isCompleted:false — a fresh
+ *   occurrence starts with all subtasks open, D19), isRecurring cleared, and
+ *   sourceTaskId set to the master's id (D9).
  * No-op if the id is not a master task.
  */
 export function moveToToday(state: AppState, id: string): AppState {
@@ -86,7 +87,12 @@ export function moveToToday(state: AppState, id: string): AppState {
       isRecurring: false,
       isActive: false,
       sourceTaskId: source.id,
-      subtasks: source.subtasks.map((s) => ({ ...s, id: newId(), isActive: false })),
+      subtasks: source.subtasks.map((s) => ({
+        ...s,
+        id: newId(),
+        isActive: false,
+        isCompleted: false,
+      })),
     };
     return { ...state, tasks: [...state.tasks, copy] };
   }
@@ -143,9 +149,11 @@ export function reorderToday(state: AppState, id: string, targetIndex: number): 
 }
 
 /**
- * Complete a Today task (SPEC §6.5): move it to Done and clear its active flag.
- * Rejected while any subtask is still open — a parent cannot complete with an
- * open subtask. No-op if the id is not a Today task.
+ * Complete a Today task (SPEC §6.5): move it to Done and clear active flags on
+ * the task and all its subtasks (D20) — a Done task must never carry an active
+ * subtask into persistence/export. Rejected while any subtask is still open — a
+ * parent cannot complete with an open subtask. No-op if the id is not a Today
+ * task.
  */
 export function completeTask(state: AppState, id: string): AppState {
   const source = state.tasks.find((t) => t.id === id);
@@ -158,7 +166,14 @@ export function completeTask(state: AppState, id: string): AppState {
   return {
     ...state,
     tasks: state.tasks.map((t) =>
-      t.id === id ? { ...t, column: 'done', isActive: false } : t,
+      t.id === id
+        ? {
+            ...t,
+            column: 'done',
+            isActive: false,
+            subtasks: t.subtasks.map((s) => ({ ...s, isActive: false })),
+          }
+        : t,
     ),
   };
 }
@@ -231,23 +246,30 @@ export function deleteSubtask(state: AppState, taskId: string, subtaskId: string
 }
 
 /**
- * Tick a subtask complete (SPEC §6.4), clearing its active flag. No-op for an
- * unknown subtask.
+ * Tick a subtask complete (SPEC §6.4), clearing its active flag. Ticking is a
+ * Today activity (D18): no-op unless the parent exists and is in Today — a
+ * master task is a template whose subtasks must not carry completion into future
+ * day-copies. No-op for an unknown subtask.
  */
 export function completeSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
+  const parent = state.tasks.find((t) => t.id === taskId);
+  if (!parent || parent.column !== 'today') return state;
+
   return mapSubtasks(state, taskId, (subs) =>
     subs.map((s) => (s.id === subtaskId ? { ...s, isCompleted: true, isActive: false } : s)),
   );
 }
 
 /**
- * Un-tick a completed subtask (D5), allowed until its parent is cleared to
- * History. No-op when the parent is in Done — a done task must never hold an
- * open subtask; undo the parent completion first.
+ * Un-tick a completed subtask (D5), allowed while its parent is in Today.
+ * Un-ticking is a Today activity (D18): no-op unless the parent exists and is in
+ * Today — a Done parent must never hold an open subtask (undo the parent
+ * completion first), and a Master task is a template whose subtasks are not
+ * tickable.
  */
 export function uncompleteSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
   const parent = state.tasks.find((t) => t.id === taskId);
-  if (!parent || parent.column === 'done') return state;
+  if (!parent || parent.column !== 'today') return state;
 
   return mapSubtasks(state, taskId, (subs) =>
     subs.map((s) => (s.id === subtaskId ? { ...s, isCompleted: false } : s)),
@@ -362,13 +384,14 @@ export function setActive(state: AppState, taskId: string): AppState {
 /**
  * Set a subtask as the single active item (SPEC §6.8). The parent must be in
  * Today. Clears any previously active task or subtask first; clicking the
- * already-active subtask toggles it off. No-op for an unknown subtask.
+ * already-active subtask toggles it off. No-op for an unknown subtask, or when
+ * the subtask is already completed — a completed subtask cannot be active (D20).
  */
 export function setActiveSubtask(state: AppState, taskId: string, subtaskId: string): AppState {
   const parent = state.tasks.find((t) => t.id === taskId);
   if (!parent || parent.column !== 'today') return state;
   const target = parent.subtasks.find((s) => s.id === subtaskId);
-  if (!target) return state;
+  if (!target || target.isCompleted) return state;
 
   const cleared = clearAllActiveFlags(state.tasks);
   if (target.isActive) return { ...state, tasks: cleared }; // toggle off
@@ -386,9 +409,4 @@ export function setActiveSubtask(state: AppState, taskId: string, subtaskId: str
         : t,
     ),
   };
-}
-
-/** Un-set any active item (SPEC §6.8). */
-export function clearActive(state: AppState): AppState {
-  return { ...state, tasks: clearAllActiveFlags(state.tasks) };
 }
