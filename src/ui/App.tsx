@@ -124,12 +124,16 @@ export function App() {
           onRemove={(id) => setState((s) => removeFromToday(s, id))}
           onComplete={(id) => setState((s) => completeTask(s, id))}
           onSetActive={(id) => setState((s) => setActive(s, id))}
+          onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
+          onDelete={(id) => setState((s) => deleteTask(s, id))}
           subtaskHandlers={subtaskHandlers}
         />
         <DoneColumn
           tasks={state.tasks}
           onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
           onClear={() => setState((s) => clearDone(s, new Date()))}
+          onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
+          onDelete={(id) => setState((s) => deleteTask(s, id))}
         />
       </main>
       <HistoryPanel history={state.history} />
