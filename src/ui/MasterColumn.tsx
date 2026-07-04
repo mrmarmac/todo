@@ -3,6 +3,7 @@ import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
+import { TaskEditForm } from './TaskEditForm';
 
 interface Props {
   tasks: Task[];
@@ -102,53 +103,19 @@ function MasterTask({
   subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [dueDate, setDueDate] = useState(task.dueDate ?? '');
-  const [isRecurring, setIsRecurring] = useState(task.isRecurring);
-
-  function saveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (title.trim() === '') return;
-    onUpdate(task.id, { title, dueDate: dueDate || null, isRecurring });
-    setEditing(false);
-  }
-
-  function cancelEdit() {
-    setTitle(task.title);
-    setDueDate(task.dueDate ?? '');
-    setIsRecurring(task.isRecurring);
-    setEditing(false);
-  }
 
   if (editing) {
     return (
       <li className="task task--editing">
-        <form className="edit-form" onSubmit={saveEdit}>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            aria-label="Edit title"
-            autoFocus
-          />
-          <div className="edit-form__row">
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            <label>
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-              />
-              Recurring
-            </label>
-          </div>
-          <div className="task__actions">
-            <button type="submit">Save</button>
-            <button type="button" onClick={cancelEdit}>
-              Cancel
-            </button>
-          </div>
-        </form>
+        <TaskEditForm
+          task={task}
+          recurringEditable
+          onSave={(patch) => {
+            onUpdate(task.id, patch);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
       </li>
     );
   }
