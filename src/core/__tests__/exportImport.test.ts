@@ -67,4 +67,60 @@ describe('importState', () => {
     expect(() => importState(JSON.stringify([1, 2, 3]))).toThrow(/import/i);
     expect(() => importState('null')).toThrow(/import/i);
   });
+
+  it('throws a version-related error when schemaVersion is missing', () => {
+    expect(() => importState(JSON.stringify({ state: sample }))).toThrow(/version/i);
+  });
+
+  it('throws a version-related error when schemaVersion is a different number', () => {
+    expect(() => importState(JSON.stringify({ schemaVersion: 2, state: sample }))).toThrow(
+      /version/i,
+    );
+  });
+
+  it('throws a version-related error when schemaVersion is a string', () => {
+    expect(() => importState(JSON.stringify({ schemaVersion: '1', state: sample }))).toThrow(
+      /version/i,
+    );
+  });
+
+  it('sanitises active flags when the import has two active tasks', () => {
+    const bad: AppState = {
+      ...sample,
+      tasks: [
+        { ...sample.tasks[0], id: 'a', column: 'today', isActive: true },
+        { ...sample.tasks[0], id: 'b', column: 'today', isActive: true },
+      ],
+    };
+    const json = JSON.stringify({ schemaVersion: SCHEMA_VERSION, state: bad });
+    const result = importState(json);
+    expect(result.tasks.every((t) => !t.isActive)).toBe(true);
+  });
+
+  it('sanitises active flags when the active task is not in today', () => {
+    const bad: AppState = {
+      ...sample,
+      tasks: [{ ...sample.tasks[0], column: 'master', isActive: true }],
+    };
+    const json = JSON.stringify({ schemaVersion: SCHEMA_VERSION, state: bad });
+    const result = importState(json);
+    expect(result.tasks[0].isActive).toBe(false);
+  });
+
+  it('sanitises active flags when the active subtask is completed', () => {
+    const bad: AppState = {
+      ...sample,
+      tasks: [
+        {
+          ...sample.tasks[0],
+          column: 'today',
+          isActive: false,
+          subtasks: [{ id: 's1', title: 'A sub', isCompleted: true, isActive: true }],
+        },
+      ],
+    };
+    const json = JSON.stringify({ schemaVersion: SCHEMA_VERSION, state: bad });
+    const result = importState(json);
+    expect(result.tasks[0].subtasks[0].isActive).toBe(false);
+  });
 });

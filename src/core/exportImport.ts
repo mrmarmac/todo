@@ -1,5 +1,5 @@
 import type { AppState } from './types';
-import { isAppState } from './storage';
+import { isAppState, sanitizeActiveFlags } from './storage';
 
 /** Bumped only when the persisted/exported shape changes incompatibly. */
 export const SCHEMA_VERSION = 1;
@@ -38,9 +38,15 @@ export function importState(json: string): AppState {
   }
 
   const envelope = parsed as Record<string, unknown>;
+  if (envelope.schemaVersion !== SCHEMA_VERSION) {
+    throw new Error(
+      `Import failed: unsupported export version (expected schema version ${SCHEMA_VERSION}).`,
+    );
+  }
+
   if (!isAppState(envelope.state)) {
     throw new Error('Import failed: the export is missing valid app state.');
   }
 
-  return envelope.state;
+  return sanitizeActiveFlags(envelope.state);
 }
