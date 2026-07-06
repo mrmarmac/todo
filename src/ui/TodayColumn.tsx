@@ -30,6 +30,7 @@ export function TodayColumn({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [addingSubtaskId, setAddingSubtaskId] = useState<string | null>(null);
 
   function handleDrop(targetIndex: number) {
     if (draggingId) onReorder(draggingId, targetIndex);
@@ -84,6 +85,9 @@ export function TodayColumn({
                 } else if (e.key === 'e') {
                   e.preventDefault();
                   setEditingId(task.id);
+                } else if (e.key === 's') {
+                  e.preventDefault();
+                  setAddingSubtaskId(task.id);
                 } else if (e.key === 'r') {
                   e.preventDefault();
                   onRemove(task.id);
@@ -139,6 +143,15 @@ export function TodayColumn({
                 <button
                   type="button"
                   className="icon-btn"
+                  aria-label="Add subtask"
+                  title="Add subtask (s)"
+                  onClick={() => setAddingSubtaskId(task.id)}
+                >
+                  ＋
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
                   aria-label="Edit"
                   title="Edit"
                   onClick={() => setEditingId(task.id)}
@@ -164,7 +177,13 @@ export function TodayColumn({
                   🗑
                 </button>
               </div>
-              <SubtaskList task={task} activatable {...subtaskHandlers} />
+              <SubtaskList
+                task={task}
+                activatable
+                adding={addingSubtaskId === task.id}
+                onAddingChange={(v) => setAddingSubtaskId(v ? task.id : null)}
+                {...subtaskHandlers}
+              />
             </li>
           );
         })}

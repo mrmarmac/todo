@@ -41,6 +41,8 @@ export function App() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
   const [showHelp, setShowHelp] = useState(false);
+  // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
+  const [masterCollapsed, setMasterCollapsed] = useState(false);
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
@@ -60,6 +62,9 @@ export function App() {
       } else if (e.key === 'n') {
         e.preventDefault();
         addInputRef.current?.focus();
+      } else if (e.key === 'm') {
+        e.preventDefault();
+        setMasterCollapsed((v) => !v);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -147,10 +152,12 @@ export function App() {
           </button>
         </div>
       </header>
-      <main className="board">
+      <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
         <MasterColumn
           tasks={state.tasks}
           addInputRef={addInputRef}
+          collapsed={masterCollapsed}
+          onToggleCollapse={() => setMasterCollapsed((v) => !v)}
           onCreate={(input) => setState((s) => createTask(s, input))}
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
           onDelete={(id) => setState((s) => deleteTask(s, id))}

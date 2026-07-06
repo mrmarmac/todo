@@ -16,9 +16,20 @@ interface Props extends SubtaskHandlers {
   readOnly?: boolean;
   /** Today only: subtask titles are clickable to set/unset active (SPEC §6.8). */
   activatable?: boolean;
+  /** On-demand add input (plan R2 §2): the "Add subtask" field shows only when
+   *  the card opens it (via the ＋ action or the `s` shortcut). */
+  adding?: boolean;
+  onAddingChange?: (v: boolean) => void;
 }
 
-export function SubtaskList({ task, readOnly = false, activatable = false, ...h }: Props) {
+export function SubtaskList({
+  task,
+  readOnly = false,
+  activatable = false,
+  adding = false,
+  onAddingChange,
+  ...h
+}: Props) {
   // Ticking is a Today-only activity (D18) — Master subtask checkboxes must be
   // disabled since core now no-ops the tick outside Today.
   const tickable = task.column === 'today';
@@ -54,7 +65,13 @@ export function SubtaskList({ task, readOnly = false, activatable = false, ...h 
           />
         ))}
       </ul>
-      <AddSubtaskForm taskId={task.id} onAddSubtask={h.onAddSubtask} />
+      {adding && (
+        <AddSubtaskForm
+          taskId={task.id}
+          onAddSubtask={h.onAddSubtask}
+          onClose={() => onAddingChange?.(false)}
+        />
+      )}
     </div>
   );
 }
@@ -191,9 +208,11 @@ function SubtaskEditForm({
 function AddSubtaskForm({
   taskId,
   onAddSubtask,
+  onClose,
 }: {
   taskId: string;
   onAddSubtask: (taskId: string, title: string) => void;
+  onClose: () => void;
 }) {
   const [title, setTitle] = useState('');
 
@@ -201,6 +220,7 @@ function AddSubtaskForm({
     e.preventDefault();
     if (title.trim() === '') return;
     onAddSubtask(taskId, title);
+    // Keep the field open + focused so several subtasks can be added in a row.
     setTitle('');
   }
 
@@ -211,7 +231,15 @@ function AddSubtaskForm({
         placeholder="Add subtask…"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+        // Close when the user clicks away without typing anything.
+        onBlur={() => {
+          if (title.trim() === '') onClose();
+        }}
         aria-label="New subtask"
+        autoFocus
       />
       <button type="submit" disabled={title.trim() === ''}>
         +
