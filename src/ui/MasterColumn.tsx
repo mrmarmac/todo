@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 interface Props {
   tasks: Task[];
+  addInputRef?: RefObject<HTMLInputElement>;
   onCreate: (input: CreateTaskInput) => void;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
@@ -16,6 +19,7 @@ interface Props {
 
 export function MasterColumn({
   tasks,
+  addInputRef,
   onCreate,
   onUpdate,
   onDelete,
@@ -27,7 +31,10 @@ export function MasterColumn({
   return (
     <section className="column column--master">
       <h2>Master</h2>
-      <AddTaskForm onCreate={onCreate} />
+      <AddTaskForm onCreate={onCreate} inputRef={addInputRef} />
+      {masterTasks.length === 0 && (
+        <p className="column__placeholder">No tasks yet — add one above to get started.</p>
+      )}
       <ul className="task-list">
         {masterTasks.map((task) => (
           <MasterTask
@@ -44,7 +51,13 @@ export function MasterColumn({
   );
 }
 
-function AddTaskForm({ onCreate }: { onCreate: (input: CreateTaskInput) => void }) {
+function AddTaskForm({
+  onCreate,
+  inputRef,
+}: {
+  onCreate: (input: CreateTaskInput) => void;
+  inputRef?: RefObject<HTMLInputElement>;
+}) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
@@ -56,11 +69,14 @@ function AddTaskForm({ onCreate }: { onCreate: (input: CreateTaskInput) => void 
     setTitle('');
     setDueDate('');
     setIsRecurring(false);
+    // Keep focus in the field so several tasks can be added in a row.
+    inputRef?.current?.focus();
   }
 
   return (
     <form className="add-form" onSubmit={submit}>
       <input
+        ref={inputRef}
         className="add-form__title"
         type="text"
         placeholder="New task…"
@@ -120,22 +136,59 @@ function MasterTask({
     );
   }
 
+  function onKeyDown(e: React.KeyboardEvent<HTMLLIElement>) {
+    if (handleArrowNav(e)) return;
+    if (!isCardTarget(e)) return;
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      onAddToday(task.id);
+    } else if (e.key === 'e') {
+      e.preventDefault();
+      setEditing(true);
+    } else if (isDeleteKey(e.key)) {
+      e.preventDefault();
+      onDelete(task.id);
+    }
+  }
+
   return (
-    <li className={`task${task.isRecurring ? ' task--recurring' : ''}`}>
+    <li
+      className={`task${task.isRecurring ? ' task--recurring' : ''}`}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
       <div className="task__main">
         <span className="task__title">{task.title}</span>
         {task.isRecurring && <span className="badge badge--recurring">recurring</span>}
         {task.dueDate && <span className="task__due">{task.dueDate}</span>}
       </div>
       <div className="task__actions">
-        <button type="button" className="btn-primary" onClick={() => onAddToday(task.id)}>
-          → Today
+        <button
+          type="button"
+          className="icon-btn btn-primary"
+          aria-label="Move to Today"
+          title="Move to Today"
+          onClick={() => onAddToday(task.id)}
+        >
+          ➜
         </button>
-        <button type="button" onClick={() => setEditing(true)}>
-          Edit
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Edit"
+          title="Edit"
+          onClick={() => setEditing(true)}
+        >
+          ✎
         </button>
-        <button type="button" onClick={() => onDelete(task.id)}>
-          Delete
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Delete"
+          title="Delete"
+          onClick={() => onDelete(task.id)}
+        >
+          🗑
         </button>
       </div>
       <SubtaskList task={task} {...subtaskHandlers} />

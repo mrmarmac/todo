@@ -126,10 +126,22 @@ function SubtaskRow({
         )}
       </span>
       <span className="subtask__actions">
-        <button type="button" onClick={() => setEditing(true)}>
-          Edit
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Edit subtask"
+          title="Edit"
+          onClick={() => setEditing(true)}
+        >
+          ✎
         </button>
-        <button type="button" onClick={() => onDeleteSubtask(taskId, subtask.id)}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Delete subtask"
+          title="Delete"
+          onClick={() => onDeleteSubtask(taskId, subtask.id)}
+        >
           ✕
         </button>
       </span>
