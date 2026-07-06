@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App';
@@ -10,9 +11,12 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Register the hand-rolled service worker for offline / installable PWA (Slice 7).
-if ('serviceWorker' in navigator) {
+// Production only (D22): registering in `vite dev` caches Vite's transformed /src
+// modules and serves stale code on reload. Use BASE_URL so the path is correct
+// under any deploy sub-path.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       /* SW registration is best-effort; the app works without it. */
     });
   });
