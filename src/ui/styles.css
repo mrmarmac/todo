@@ -76,6 +76,12 @@ body {
   align-items: start;
 }
 
+/* Collapsed Master (plan R2 §1): Master shrinks to a slim rail, Today/Done
+   widen to fill. */
+.board--master-collapsed {
+  grid-template-columns: 44px 1fr 1fr;
+}
+
 .column {
   background: var(--col-bg);
   border: 1px solid var(--border);
@@ -536,4 +542,52 @@ kbd {
 /* Header hint button that opens the cheatsheet. */
 .app__help {
   font-weight: 600;
+}
+
+/* ── Collapsed Master rail (plan R2 §1) ────────────────────────────────── */
+.column--collapsed {
+  padding: 0.75rem 0.2rem;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* The whole rail is one tall click target: vertical label + expand chevron. */
+.column__expand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.column__expand:hover:not(:disabled) {
+  color: var(--accent);
+  border: none;
+}
+
+.column__rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.column__expand:hover .column__rail-label {
+  color: var(--accent);
+}
+
+/* Collapse chevron in the expanded Master header. */
+.column__collapse {
+  min-width: auto;
+  padding: 0.15rem 0.45rem;
+  color: var(--muted);
 }

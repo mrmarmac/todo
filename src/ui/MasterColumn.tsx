@@ -10,6 +10,8 @@ import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 interface Props {
   tasks: Task[];
   addInputRef?: RefObject<HTMLInputElement>;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   onCreate: (input: CreateTaskInput) => void;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
@@ -20,6 +22,8 @@ interface Props {
 export function MasterColumn({
   tasks,
   addInputRef,
+  collapsed = false,
+  onToggleCollapse,
   onCreate,
   onUpdate,
   onDelete,
@@ -28,9 +32,39 @@ export function MasterColumn({
 }: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
 
+  // Collapsed slim rail (plan R2 §1): a thin strip with a vertical label so
+  // Today/Done get the focus. Task data is untouched and returns on expand.
+  if (collapsed) {
+    return (
+      <section className="column column--master column--collapsed">
+        <button
+          type="button"
+          className="column__expand"
+          aria-label="Expand Master"
+          title="Expand Master (m)"
+          onClick={onToggleCollapse}
+        >
+          <span className="column__rail-label">Master</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="column column--master">
-      <h2>Master</h2>
+      <div className="column__head">
+        <h2>Master</h2>
+        <button
+          type="button"
+          className="icon-btn column__collapse"
+          aria-label="Collapse Master"
+          title="Collapse Master (m)"
+          onClick={onToggleCollapse}
+        >
+          ‹
+        </button>
+      </div>
       <AddTaskForm onCreate={onCreate} inputRef={addInputRef} />
       {masterTasks.length === 0 && (
         <p className="column__placeholder">No tasks yet — add one above to get started.</p>
@@ -119,6 +153,7 @@ function MasterTask({
   subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
+  const [addingSubtask, setAddingSubtask] = useState(false);
 
   if (editing) {
     return (
@@ -145,6 +180,9 @@ function MasterTask({
     } else if (e.key === 'e') {
       e.preventDefault();
       setEditing(true);
+    } else if (e.key === 's') {
+      e.preventDefault();
+      setAddingSubtask(true);
     } else if (isDeleteKey(e.key)) {
       e.preventDefault();
       onDelete(task.id);
@@ -175,6 +213,15 @@ function MasterTask({
         <button
           type="button"
           className="icon-btn"
+          aria-label="Add subtask"
+          title="Add subtask (s)"
+          onClick={() => setAddingSubtask(true)}
+        >
+          ＋
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
           aria-label="Edit"
           title="Edit"
           onClick={() => setEditing(true)}
@@ -191,7 +238,12 @@ function MasterTask({
           🗑
         </button>
       </div>
-      <SubtaskList task={task} {...subtaskHandlers} />
+      <SubtaskList
+        task={task}
+        adding={addingSubtask}
+        onAddingChange={setAddingSubtask}
+        {...subtaskHandlers}
+      />
     </li>
   );
 }
