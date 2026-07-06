@@ -3,6 +3,7 @@ import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 interface Props {
   tasks: Task[];
@@ -58,6 +59,7 @@ export function TodayColumn({
               </li>
             );
           }
+          const openSubtasks = task.subtasks.some((s) => !s.isCompleted);
           return (
             <li
               key={task.id}
@@ -67,7 +69,29 @@ export function TodayColumn({
                 (draggingId === task.id ? ' task--dragging' : '') +
                 (overIndex === index ? ' task--drop-target' : '')
               }
+              tabIndex={0}
               draggable
+              onKeyDown={(e) => {
+                if (handleArrowNav(e)) return;
+                if (!isCardTarget(e)) return;
+                if (e.key === ' ') {
+                  e.preventDefault();
+                  onSetActive(task.id);
+                } else if (e.key === 'c') {
+                  if (openSubtasks) return;
+                  e.preventDefault();
+                  onComplete(task.id);
+                } else if (e.key === 'e') {
+                  e.preventDefault();
+                  setEditingId(task.id);
+                } else if (e.key === 'r') {
+                  e.preventDefault();
+                  onRemove(task.id);
+                } else if (isDeleteKey(e.key)) {
+                  e.preventDefault();
+                  onDelete(task.id);
+                }
+              }}
               onDragStart={(e) => {
                 setDraggingId(task.id);
                 e.dataTransfer.setData('text/plain', task.id);
@@ -102,28 +126,42 @@ export function TodayColumn({
                 {task.dueDate && <span className="task__due">{task.dueDate}</span>}
               </div>
               <div className="task__actions">
-                {(() => {
-                  const openSubtasks = task.subtasks.some((s) => !s.isCompleted);
-                  return (
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      disabled={openSubtasks}
-                      title={openSubtasks ? 'Finish all subtasks first' : undefined}
-                      onClick={() => onComplete(task.id)}
-                    >
-                      Complete
-                    </button>
-                  );
-                })()}
-                <button type="button" onClick={() => setEditingId(task.id)}>
-                  Edit
+                <button
+                  type="button"
+                  className="icon-btn btn-primary"
+                  disabled={openSubtasks}
+                  aria-label="Complete"
+                  title={openSubtasks ? 'Finish all subtasks first' : 'Complete'}
+                  onClick={() => onComplete(task.id)}
+                >
+                  ✓
                 </button>
-                <button type="button" onClick={() => onDelete(task.id)}>
-                  Delete
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Edit"
+                  title="Edit"
+                  onClick={() => setEditingId(task.id)}
+                >
+                  ✎
                 </button>
-                <button type="button" onClick={() => onRemove(task.id)}>
-                  Remove
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Remove from Today"
+                  title="Remove from Today"
+                  onClick={() => onRemove(task.id)}
+                >
+                  ↩
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete"
+                  title="Delete"
+                  onClick={() => onDelete(task.id)}
+                >
+                  🗑
                 </button>
               </div>
               <SubtaskList task={task} activatable {...subtaskHandlers} />

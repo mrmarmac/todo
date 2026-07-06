@@ -3,6 +3,7 @@ import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 const noopSubtaskHandlers = {
   onAddSubtask: () => {},
@@ -53,21 +54,57 @@ export function DoneColumn({ tasks, onUncomplete, onClear, onUpdate, onDelete }:
             );
           }
           return (
-            <li key={task.id} className="task task--done">
+            <li
+              key={task.id}
+              className="task task--done"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (handleArrowNav(e)) return;
+                if (!isCardTarget(e)) return;
+                if (e.key === 'u') {
+                  e.preventDefault();
+                  onUncomplete(task.id);
+                } else if (e.key === 'e') {
+                  e.preventDefault();
+                  setEditingId(task.id);
+                } else if (isDeleteKey(e.key)) {
+                  e.preventDefault();
+                  onDelete(task.id);
+                }
+              }}
+            >
               <div className="task__main">
                 <span className="task__title task__title--done">{task.title}</span>
                 {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
                 {task.dueDate && <span className="task__due">{task.dueDate}</span>}
               </div>
               <div className="task__actions">
-                <button type="button" onClick={() => onUncomplete(task.id)}>
-                  Undo
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Undo (back to Today)"
+                  title="Undo (back to Today)"
+                  onClick={() => onUncomplete(task.id)}
+                >
+                  ↺
                 </button>
-                <button type="button" onClick={() => setEditingId(task.id)}>
-                  Edit
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Edit"
+                  title="Edit"
+                  onClick={() => setEditingId(task.id)}
+                >
+                  ✎
                 </button>
-                <button type="button" onClick={() => onDelete(task.id)}>
-                  Delete
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete"
+                  title="Delete"
+                  onClick={() => onDelete(task.id)}
+                >
+                  🗑
                 </button>
               </div>
               <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />

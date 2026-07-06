@@ -7,6 +7,31 @@
   --accent: #0b74de;
   --recurring: #7a3ff2;
   --recurring-bg: #f3edff;
+  --active-bg: #eef5fe;
+  --done-bg: #eeeef0;
+  --ring: rgba(11, 116, 222, 0.35);
+  --btn-bg: #ffffff;
+  /* Let native controls (date picker, checkbox) follow the theme. */
+  color-scheme: light dark;
+}
+
+/* Dark mode via system theme. Every rule references the variables above, so
+   overriding them here flips the whole board (plan §3). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161618;
+    --col-bg: #242426;
+    --border: #3a3a3d;
+    --text: #f5f5f7;
+    --muted: #9a9aa0;
+    --accent: #4b9bff;
+    --recurring: #b490ff;
+    --recurring-bg: #2f2545;
+    --active-bg: #1c3350;
+    --done-bg: #1d1d1f;
+    --ring: rgba(75, 155, 255, 0.4);
+    --btn-bg: #313134;
+  }
 }
 
 * {
@@ -97,7 +122,8 @@ body {
 
 button {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--btn-bg);
+  color: var(--text);
   border-radius: 8px;
   padding: 0.35rem 0.7rem;
   cursor: pointer;
@@ -132,6 +158,20 @@ button:disabled {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Keyboard-focused card (roving focus, plan §2). */
+.task:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .task--recurring {
@@ -190,11 +230,13 @@ button:disabled {
   opacity: 0.4;
 }
 
-/* Active item (SPEC §6.8) — exactly one clearly highlighted task/subtask. */
+/* Active item (SPEC §6.8) — exactly one clearly highlighted task/subtask.
+   A left accent bar (inset shadow, no layout shift) makes "what am I working
+   on" read instantly. */
 .task--active {
   border-color: var(--accent);
-  background: #eef5fe;
-  box-shadow: 0 0 0 2px rgba(11, 116, 222, 0.35);
+  background: var(--active-bg);
+  box-shadow: inset 3px 0 0 0 var(--accent), 0 0 0 2px var(--ring);
 }
 
 /* Clickable title used to set/unset active — reset button chrome to look like text. */
@@ -228,7 +270,7 @@ button:disabled {
 
 .task--drop-target {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(11, 116, 222, 0.25);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 
 .task__drag-handle {
@@ -260,7 +302,7 @@ button:disabled {
 }
 
 .task--done {
-  background: var(--bg);
+  background: var(--done-bg);
   opacity: 0.75;
 }
 
@@ -384,4 +426,114 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.8rem;
+}
+
+/* ── Icon action buttons (plan §1) ─────────────────────────────────────── */
+/* Compact square buttons; text label lives in aria-label + title. */
+.icon-btn {
+  min-width: 1.9rem;
+  padding: 0.25rem 0.4rem;
+  line-height: 1;
+  font-size: 0.95rem;
+}
+
+.icon-btn.btn-primary {
+  font-weight: 600;
+}
+
+.subtask__actions .icon-btn {
+  min-width: auto;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
+}
+
+/* Hover/focus reveal: only on devices that actually hover (desktop). On touch
+   (future iPhone) the @media guard is false, so actions stay visible. Editing
+   cards are excluded so the Save/Cancel row is never hidden. */
+@media (hover: hover) {
+  .task:not(.task--editing) .task__actions,
+  .task:not(.task--editing) .subtask__actions {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  .task:not(.task--editing):hover .task__actions,
+  .task:not(.task--editing):focus-within .task__actions,
+  .task:not(.task--editing):hover .subtask__actions,
+  .task:not(.task--editing):focus-within .subtask__actions {
+    opacity: 1;
+  }
+}
+
+/* ── Shortcut cheatsheet overlay (plan §2) ─────────────────────────────── */
+.shortcut-help__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.shortcut-help {
+  background: var(--col-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.shortcut-help__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.shortcut-help__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.shortcut-help__group + .shortcut-help__group {
+  margin-top: 1rem;
+}
+
+.shortcut-help__group h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.shortcut-help__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.2rem 0;
+  font-size: 0.9rem;
+}
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Header hint button that opens the cheatsheet. */
+.app__help {
+  font-weight: 600;
 }

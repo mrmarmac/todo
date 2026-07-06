@@ -27,15 +27,44 @@ import { MasterColumn } from './MasterColumn';
 import { TodayColumn } from './TodayColumn';
 import { DoneColumn } from './DoneColumn';
 import { HistoryPanel } from './HistoryPanel';
+import { ShortcutHelp } from './ShortcutHelp';
+
+/** True when focus is in a text field, so global letter-shortcuts should not fire. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+}
 
 export function App() {
   const [state, setState] = useState<AppState>(() => load());
   const importInputRef = useRef<HTMLInputElement>(null);
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
     save(state);
   }, [state]);
+
+  // Global keyboard shortcuts (plan §2). Card-scoped shortcuts live on each
+  // card's own onKeyDown; these are the app-level ones.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Never hijack keys while the user is typing in a field.
+      if (isTypingTarget(e.target)) return;
+      // '?' is Shift+/ — some layouts/engines report the key as '/' + shift.
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowHelp((v) => !v);
+      } else if (e.key === 'n') {
+        e.preventDefault();
+        addInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleExport = () => {
     const json = exportState(state);
@@ -107,11 +136,21 @@ export function App() {
             hidden
             onChange={handleImportFile}
           />
+          <button
+            type="button"
+            className="app__help"
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+            onClick={() => setShowHelp(true)}
+          >
+            ?
+          </button>
         </div>
       </header>
       <main className="board">
         <MasterColumn
           tasks={state.tasks}
+          addInputRef={addInputRef}
           onCreate={(input) => setState((s) => createTask(s, input))}
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
           onDelete={(id) => setState((s) => deleteTask(s, id))}
@@ -137,6 +176,7 @@ export function App() {
         />
       </main>
       <HistoryPanel history={state.history} />
+      {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
