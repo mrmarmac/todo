@@ -9,6 +9,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     title: 'Global',
     rows: [
       ['n', 'Focus the “New task” field'],
+      ['m', 'Collapse / expand the Master column'],
       ['?', 'Toggle this cheatsheet'],
       ['Esc', 'Close / cancel'],
     ],
@@ -17,6 +18,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     title: 'On a focused card (Tab or ↑ ↓ to move between cards)',
     rows: [
       ['↑ / ↓', 'Move focus to previous / next card'],
+      ['s', 'Add a subtask'],
       ['e', 'Edit'],
       ['Del', 'Delete'],
     ],
