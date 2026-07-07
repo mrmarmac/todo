@@ -5,10 +5,12 @@ import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { DueDate } from './DueDate';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 interface Props {
   tasks: Task[];
+  today: string;
   addInputRef?: RefObject<HTMLInputElement>;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -21,6 +23,7 @@ interface Props {
 
 export function MasterColumn({
   tasks,
+  today,
   addInputRef,
   collapsed = false,
   onToggleCollapse,
@@ -74,6 +77,7 @@ export function MasterColumn({
           <MasterTask
             key={task.id}
             task={task}
+            today={today}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAddToday={onAddToday}
@@ -141,12 +145,14 @@ function AddTaskForm({
 
 function MasterTask({
   task,
+  today,
   onUpdate,
   onDelete,
   onAddToday,
   subtaskHandlers,
 }: {
   task: Task;
+  today: string;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
   onAddToday: (id: string) => void;
@@ -198,7 +204,7 @@ function MasterTask({
       <div className="task__main">
         <span className="task__title">{task.title}</span>
         {task.isRecurring && <span className="badge badge--recurring">recurring</span>}
-        {task.dueDate && <span className="task__due">{task.dueDate}</span>}
+        {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
       </div>
       <div className="task__actions">
         <button
