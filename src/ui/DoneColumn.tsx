@@ -3,6 +3,7 @@ import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { DueDate } from './DueDate';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 const noopSubtaskHandlers = {
@@ -16,13 +17,14 @@ const noopSubtaskHandlers = {
 
 interface Props {
   tasks: Task[];
+  today: string;
   onUncomplete: (id: string) => void;
   onClear: () => void;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
 }
 
-export function DoneColumn({ tasks, onUncomplete, onClear, onUpdate, onDelete }: Props) {
+export function DoneColumn({ tasks, today, onUncomplete, onClear, onUpdate, onDelete }: Props) {
   const doneTasks = tasks.filter((t) => t.column === 'done');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -76,7 +78,7 @@ export function DoneColumn({ tasks, onUncomplete, onClear, onUpdate, onDelete }:
               <div className="task__main">
                 <span className="task__title task__title--done">{task.title}</span>
                 {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
-                {task.dueDate && <span className="task__due">{task.dueDate}</span>}
+                {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
               </div>
               <div className="task__actions">
                 <button
