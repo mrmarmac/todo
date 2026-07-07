@@ -155,6 +155,7 @@ export function App() {
       <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
         <MasterColumn
           tasks={state.tasks}
+          today={state.currentDay}
           addInputRef={addInputRef}
           collapsed={masterCollapsed}
           onToggleCollapse={() => setMasterCollapsed((v) => !v)}
@@ -166,6 +167,7 @@ export function App() {
         />
         <TodayColumn
           tasks={state.tasks}
+          today={state.currentDay}
           onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
           onRemove={(id) => setState((s) => removeFromToday(s, id))}
           onComplete={(id) => setState((s) => completeTask(s, id))}
@@ -176,6 +178,7 @@ export function App() {
         />
         <DoneColumn
           tasks={state.tasks}
+          today={state.currentDay}
           onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
           onClear={() => setState((s) => clearDone(s, new Date()))}
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
