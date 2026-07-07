@@ -3,10 +3,12 @@ import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
+import { DueDate } from './DueDate';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 interface Props {
   tasks: Task[];
+  today: string;
   onReorder: (id: string, targetIndex: number) => void;
   onRemove: (id: string) => void;
   onComplete: (id: string) => void;
@@ -18,6 +20,7 @@ interface Props {
 
 export function TodayColumn({
   tasks,
+  today,
   onReorder,
   onRemove,
   onComplete,
@@ -127,7 +130,7 @@ export function TodayColumn({
                   {task.title}
                 </button>
                 {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
-                {task.dueDate && <span className="task__due">{task.dueDate}</span>}
+                {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
               </div>
               <div className="task__actions">
                 <button
