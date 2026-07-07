@@ -7,9 +7,9 @@
 //      though the first page load happened before the SW controlled the page.
 //   3. Dev cache trap: main.tsx now registers the SW in production only, so this
 //      file never runs against Vite's transformed /src modules during `vite dev`.
-const CACHE = 'todo-pwa-v2';
+const CACHE = 'todo-pwa-v3';
 // Core shell that must be cached for the app to boot offline.
-const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
+const SHELL = ['/todo/', '/todo/index.html', '/todo/manifest.webmanifest'];
 
 // Pull the hashed asset URLs out of index.html's markup. Vite emits e.g.
 //   <script type="module" crossorigin src="/assets/index-XXXX.js"></script>
@@ -36,7 +36,7 @@ self.addEventListener('install', (event) => {
       // fetch/parse failure here must NOT abort the shell install above, so it
       // is wrapped and individual puts are used rather than a single addAll.
       try {
-        const res = await fetch('/index.html', { cache: 'no-cache' });
+        const res = await fetch('/todo/index.html', { cache: 'no-cache' });
         if (res.ok) {
           const html = await res.text();
           const assets = extractAssetUrls(html);
@@ -68,7 +68,7 @@ self.addEventListener('activate', (event) => {
       // /assets/ entries no longer referenced by it. Wrapped so offline
       // activation (fetch throws) still succeeds.
       try {
-        const res = await fetch('/index.html', { cache: 'no-cache' });
+        const res = await fetch('/todo/index.html', { cache: 'no-cache' });
         if (res.ok) {
           const current = new Set(extractAssetUrls(await res.text()));
           const cache = await caches.open(CACHE);
@@ -113,7 +113,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html'))),
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/todo/index.html'))),
     );
     return;
   }
