@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatRelativeDueDate } from '../dates';
+import { formatRelativeDueDate, dueDateUrgency, addDaysISO } from '../dates';
 
 // 2026-07-07 is a Tuesday; its Mon–Sun week runs 2026-07-06 … 2026-07-12.
 const TODAY = '2026-07-07';
@@ -56,5 +56,40 @@ describe('formatRelativeDueDate', () => {
     expect(formatRelativeDueDate('2026-09-01', TODAY)).toBe('2026-09-01');
     expect(formatRelativeDueDate('2026-05-20', TODAY)).toBe('2026-05-20');
     expect(formatRelativeDueDate('2027-07-07', TODAY)).toBe('2027-07-07');
+  });
+});
+
+describe('dueDateUrgency', () => {
+  it('flags past dates as overdue', () => {
+    expect(dueDateUrgency('2026-07-06', TODAY)).toBe('overdue');
+    expect(dueDateUrgency('2026-01-01', TODAY)).toBe('overdue');
+  });
+
+  it('flags the current day as today', () => {
+    expect(dueDateUrgency('2026-07-07', TODAY)).toBe('today');
+  });
+
+  it('flags the next two days as soon', () => {
+    expect(dueDateUrgency('2026-07-08', TODAY)).toBe('soon');
+    expect(dueDateUrgency('2026-07-09', TODAY)).toBe('soon');
+  });
+
+  it('flags three-plus days out as upcoming', () => {
+    expect(dueDateUrgency('2026-07-10', TODAY)).toBe('upcoming');
+    expect(dueDateUrgency('2026-12-31', TODAY)).toBe('upcoming');
+  });
+});
+
+describe('addDaysISO', () => {
+  it('advances by whole days', () => {
+    expect(addDaysISO('2026-07-07', 1)).toBe('2026-07-08');
+    expect(addDaysISO('2026-07-07', 7)).toBe('2026-07-14');
+    expect(addDaysISO('2026-07-07', 0)).toBe('2026-07-07');
+  });
+
+  it('rolls across month and year boundaries', () => {
+    expect(addDaysISO('2026-07-31', 1)).toBe('2026-08-01');
+    expect(addDaysISO('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDaysISO('2026-03-01', -1)).toBe('2026-02-28');
   });
 });

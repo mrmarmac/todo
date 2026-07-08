@@ -3,10 +3,12 @@ import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
+import { addDaysISO } from '../core/dates';
 import { Icon } from './Icon';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
 import { DueDate } from './DueDate';
+import { TaskTitle } from './TaskTitle';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 interface Props {
@@ -69,7 +71,7 @@ export function MasterColumn({
           ‹
         </button>
       </div>
-      <AddTaskForm onCreate={onCreate} inputRef={addInputRef} />
+      <AddTaskForm onCreate={onCreate} inputRef={addInputRef} today={today} />
       {masterTasks.length === 0 && (
         <p className="column__placeholder">No tasks yet — add one above to get started.</p>
       )}
@@ -93,9 +95,11 @@ export function MasterColumn({
 function AddTaskForm({
   onCreate,
   inputRef,
+  today,
 }: {
   onCreate: (input: CreateTaskInput) => void;
   inputRef?: RefObject<HTMLInputElement>;
+  today: string;
 }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -112,6 +116,14 @@ function AddTaskForm({
     inputRef?.current?.focus();
   }
 
+  // Single-click relative due dates. Toggle off if the same day is re-picked.
+  const quickDates: Array<{ label: string; value: string }> = [
+    { label: 'Today', value: today },
+    { label: '+1d', value: addDaysISO(today, 1) },
+    { label: '+7d', value: addDaysISO(today, 7) },
+  ];
+  const pickQuick = (value: string) => setDueDate((prev) => (prev === value ? '' : value));
+
   return (
     <form className="add-form" onSubmit={submit}>
       <input
@@ -123,22 +135,41 @@ function AddTaskForm({
         onChange={(e) => setTitle(e.target.value)}
         aria-label="Task title"
       />
-      <div className="add-form__row">
-        <label className="add-form__due">
-          Due
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </label>
-        <label className="add-form__recurring">
+      {/* Revealed only while the form has focus (CSS :focus-within). */}
+      <div className="add-form__advanced">
+        <div className="add-form__row">
+          <span className="add-form__label">Due</span>
+          <div className="add-form__quick">
+            {quickDates.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                className={'add-form__chip' + (dueDate === q.value ? ' add-form__chip--active' : '')}
+                onClick={() => pickQuick(q.value)}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
           <input
-            type="checkbox"
-            checked={isRecurring}
-            onChange={(e) => setIsRecurring(e.target.checked)}
+            className="add-form__date"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            aria-label="Due date"
           />
-          Recurring
-        </label>
-        <button type="submit" disabled={title.trim() === ''}>
-          Add
-        </button>
+          <label className="add-form__recurring">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+            />
+            Recurring
+          </label>
+          <button type="submit" className="add-form__submit" disabled={title.trim() === ''}>
+            Add
+          </button>
+        </div>
       </div>
     </form>
   );
@@ -203,7 +234,7 @@ function MasterTask({
       onKeyDown={onKeyDown}
     >
       <div className="task__main">
-        <span className="task__title">{task.title}</span>
+        <TaskTitle title={task.title} className="task__title" />
         {task.isRecurring && <span className="badge badge--recurring">recurring</span>}
         {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
       </div>

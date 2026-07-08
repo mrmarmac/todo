@@ -5,6 +5,7 @@ import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
 import { DueDate } from './DueDate';
+import { TaskTitle } from './TaskTitle';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 import { Icon } from './Icon';
 
@@ -141,14 +142,11 @@ export function TodayColumn({
                 <span className="task__drag-handle" aria-hidden="true">
                   ⠿
                 </span>
-                <button
-                  type="button"
-                  className={'task__title task__activate' + (task.isActive ? ' task__title--active' : '')}
-                  title={task.isActive ? 'Unset active' : 'Set as active'}
-                  onClick={() => onSetActive(task.id)}
-                >
-                  {task.title}
-                </button>
+                <TaskTitle
+                  title={task.title}
+                  active={task.isActive}
+                  onActivate={() => onSetActive(task.id)}
+                />
                 {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
                 {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
               </div>

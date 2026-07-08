@@ -11,6 +11,16 @@
   --done-bg: #eeeef0;
   --ring: rgba(11, 116, 222, 0.35);
   --btn-bg: #ffffff;
+  --header-bg: #ffffff;
+  --pill-bg: #eef2f7;
+  --pill-text: #0b74de;
+  /* Due-date urgency (task labels) */
+  --due-overdue: #c81e1e;
+  --due-overdue-bg: #fdeaea;
+  --due-today: #b45309;
+  --due-today-bg: #fdf1e0;
+  --due-soon: #8a6d00;
+  --due-soon-bg: #fbf4d6;
   /* Let native controls (date picker, checkbox) follow the theme. */
   color-scheme: light dark;
 }
@@ -31,6 +41,15 @@
     --done-bg: #1d1d1f;
     --ring: rgba(75, 155, 255, 0.4);
     --btn-bg: #313134;
+    --header-bg: #1d1d1f;
+    --pill-bg: #2a3340;
+    --pill-text: #7fb5ff;
+    --due-overdue: #ff8a8a;
+    --due-overdue-bg: #3a1f22;
+    --due-today: #ffc078;
+    --due-today-bg: #3a2c1a;
+    --due-soon: #e6d27a;
+    --due-soon-bg: #322f1c;
   }
 }
 
@@ -50,6 +69,10 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
+  /* Title bar tracks the theme and lines up with the PWA's OS title bar
+     (theme-color meta), so the two read as one continuous bar. */
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .app__header h1 {
@@ -148,6 +171,72 @@ body {
   color: var(--muted);
 }
 
+/* Progressive disclosure (task 4): only the "New task…" field shows until the
+   form gains focus; then the due/recurring/add controls unfold below it. */
+.add-form__advanced {
+  display: none;
+}
+
+.add-form:focus-within .add-form__advanced {
+  display: block;
+}
+
+/* One vertically-centred control row so "Due", the quick chips, the date box,
+   the Recurring checkbox and "Add" all sit on a single centre line (task 4). */
+.add-form__advanced .add-form__row {
+  gap: 0.5rem;
+}
+
+.add-form__label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.add-form__quick {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.add-form__chip {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  border-radius: 999px;
+}
+
+.add-form__chip--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--active-bg);
+}
+
+.add-form__date {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--btn-bg);
+}
+
+.add-form__recurring {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.add-form__recurring input {
+  margin: 0;
+}
+
+.add-form__submit {
+  margin-left: auto;
+  font-weight: 600;
+}
+
 button {
   border: 1px solid var(--border);
   background: var(--btn-bg);
@@ -180,7 +269,7 @@ button:disabled {
 .task {
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 0.6rem 0.7rem;
+  padding: 0.3rem 0.7rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -217,9 +306,71 @@ input:focus-visible {
   font-weight: 500;
 }
 
+/* URL titles render as a tight, clickable pill of just the domain (task 1). */
+.task__url-pill {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--pill-bg);
+  color: var(--pill-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task__url-pill:hover {
+  text-decoration: underline;
+}
+
+.task__url-pill--active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.task--done .task__url-pill {
+  opacity: 0.7;
+}
+
 .task__due {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+/* Colour-code by urgency (task 6). Upcoming stays muted; nearer dates get a
+   tinted pill so overdue / due-today jump out. */
+.task__due--overdue,
+.task__due--today,
+.task__due--soon {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.task__due--overdue {
+  color: var(--due-overdue);
+  background: var(--due-overdue-bg);
+}
+
+.task__due--today {
+  color: var(--due-today);
+  background: var(--due-today-bg);
+}
+
+.task__due--soon {
+  color: var(--due-soon);
+  background: var(--due-soon-bg);
+}
+
+/* Done cards are muted overall — don't let urgency colours shout there. */
+.task--done .task__due {
+  background: none;
+  color: var(--muted);
+  font-weight: 400;
+  padding: 0;
 }
 
 .badge {
