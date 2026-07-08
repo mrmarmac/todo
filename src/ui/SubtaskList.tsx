@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Task } from '../core/types';
 import { Icon } from './Icon';
+import { UrlPill } from './TaskTitle';
+import { parseUrl } from '../core/urls';
 
 export interface SubtaskHandlers {
   onAddSubtask: (taskId: string, title: string) => void;
@@ -41,11 +43,15 @@ export function SubtaskList({
       <ul className="subtask-list">
         {task.subtasks.map((s) => (
           <li key={s.id} className="subtask">
-            <span
-              className={'subtask__title' + (s.isCompleted ? ' subtask__title--done' : '')}
-            >
-              {s.title}
-            </span>
+            {parseUrl(s.title) ? (
+              <UrlPill title={s.title} />
+            ) : (
+              <span
+                className={'subtask__title' + (s.isCompleted ? ' subtask__title--done' : '')}
+              >
+                {s.title}
+              </span>
+            )}
           </li>
         ))}
       </ul>
@@ -130,7 +136,9 @@ function SubtaskRow({
               : onUncompleteSubtask(taskId, subtask.id)
           }
         />
-        {activatable && !subtask.isCompleted ? (
+        {parseUrl(subtask.title) ? (
+          <UrlPill title={subtask.title} active={subtask.isActive} />
+        ) : activatable && !subtask.isCompleted ? (
           <button
             type="button"
             className={titleClass + ' subtask__activate'}
