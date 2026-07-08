@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Task } from '../core/types';
+import { Icon } from './Icon';
 
 export interface SubtaskHandlers {
   onAddSubtask: (taskId: string, title: string) => void;
@@ -150,7 +151,7 @@ function SubtaskRow({
           title="Edit"
           onClick={() => setEditing(true)}
         >
-          ✎
+          <Icon name="pencil" />
         </button>
         <button
           type="button"
@@ -159,7 +160,7 @@ function SubtaskRow({
           title="Delete"
           onClick={() => onDeleteSubtask(taskId, subtask.id)}
         >
-          ✕
+          <Icon name="x" />
         </button>
       </span>
     </li>

@@ -82,6 +82,28 @@ body {
   grid-template-columns: 44px 1fr 1fr;
 }
 
+/* Below ~900px (e.g. a half-screen window) three columns get too narrow to be
+   usable, so stack them into one. Order by activity: Today first, then Done,
+   then Master last. */
+@media (max-width: 900px) {
+  .board,
+  .board--master-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .column--today {
+    order: 1;
+  }
+
+  .column--done {
+    order: 2;
+  }
+
+  .column--master {
+    order: 3;
+  }
+}
+
 .column {
   background: var(--col-bg);
   border: 1px solid var(--border);
@@ -180,11 +202,6 @@ input:focus-visible {
   outline-offset: 1px;
 }
 
-.task--recurring {
-  background: var(--recurring-bg);
-  border-color: var(--recurring);
-}
-
 .task--editing {
   display: block;
 }
@@ -274,9 +291,24 @@ input:focus-visible {
   font-weight: 700;
 }
 
-.task--drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--ring);
+/* Drag reorder: a single 2px insertion line shows exactly where the card will
+   land — above the target card (cursor in its top half) or, via the trailing
+   drop zone, after the last card. `margin-top: -1px` absorbs the extra border
+   pixel so surrounding cards don't nudge. */
+.task--insert-before {
+  border-top: 2px solid var(--accent);
+  margin-top: -1px;
+}
+
+.task-list__end {
+  list-style: none;
+  min-height: 1.75rem;
+  border-top: 2px solid transparent;
+  margin-top: -1px;
+}
+
+.task-list__end--active {
+  border-top-color: var(--accent);
 }
 
 .task__drag-handle {
@@ -441,6 +473,11 @@ input:focus-visible {
   padding: 0.25rem 0.4rem;
   line-height: 1;
   font-size: 0.95rem;
+}
+
+.icon {
+  display: block;
+  margin: 0 auto;
 }
 
 .icon-btn.btn-primary {
