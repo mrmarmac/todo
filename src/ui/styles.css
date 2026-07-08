@@ -82,6 +82,28 @@ body {
   grid-template-columns: 44px 1fr 1fr;
 }
 
+/* Below ~900px (e.g. a half-screen window) three columns get too narrow to be
+   usable, so stack them into one. Order by activity: Today first, then Done,
+   then Master last. */
+@media (max-width: 900px) {
+  .board,
+  .board--master-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .column--today {
+    order: 1;
+  }
+
+  .column--done {
+    order: 2;
+  }
+
+  .column--master {
+    order: 3;
+  }
+}
+
 .column {
   background: var(--col-bg);
   border: 1px solid var(--border);
