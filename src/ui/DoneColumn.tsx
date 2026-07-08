@@ -1,6 +1,7 @@
 import type { Task } from '../core/types';
 import { SubtaskList } from './SubtaskList';
 import { DueDate } from './DueDate';
+import { TaskTitle } from './TaskTitle';
 import { Icon } from './Icon';
 import { handleArrowNav, isCardTarget } from './cardKeys';
 
@@ -50,7 +51,7 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear }: Props) {
             }}
           >
             <div className="task__main">
-              <span className="task__title task__title--done">{task.title}</span>
+              <TaskTitle title={task.title} className="task__title task__title--done" />
               {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
               {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
             </div>

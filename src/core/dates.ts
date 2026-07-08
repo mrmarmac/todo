@@ -49,3 +49,24 @@ export function formatRelativeDueDate(dueDate: string, today: string): string {
 
   return dueDate;
 }
+
+export type DueUrgency = 'overdue' | 'today' | 'soon' | 'upcoming';
+
+/**
+ * Urgency bucket for a due date relative to `today` (both YYYY-MM-DD), used to
+ * colour-code labels: past due, due today, due within two days, or further out.
+ */
+export function dueDateUrgency(dueDate: string, today: string): DueUrgency {
+  const diff = dayNumber(dueDate) - dayNumber(today);
+  if (diff < 0) return 'overdue';
+  if (diff === 0) return 'today';
+  if (diff <= 2) return 'soon';
+  return 'upcoming';
+}
+
+/** `iso` (YYYY-MM-DD) advanced by `n` whole days (may be negative). */
+export function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + n));
+  return shifted.toISOString().slice(0, 10);
+}
