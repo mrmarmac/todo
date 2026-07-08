@@ -180,11 +180,6 @@ input:focus-visible {
   outline-offset: 1px;
 }
 
-.task--recurring {
-  background: var(--recurring-bg);
-  border-color: var(--recurring);
-}
-
 .task--editing {
   display: block;
 }
