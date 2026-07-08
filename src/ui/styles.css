@@ -628,3 +628,26 @@ kbd {
   padding: 0.15rem 0.45rem;
   color: var(--muted);
 }
+
+/* When columns stack vertically (below 900px) a collapsed Master becomes a
+   short horizontal bar with the label read normally — the vertical side rail
+   only makes sense when columns sit side by side. This block lives after the
+   base collapsed-rail rules so it wins on source order (media queries add no
+   specificity of their own). */
+@media (max-width: 900px) {
+  .column--collapsed {
+    min-height: 0;
+    padding: 0.5rem 1rem;
+  }
+
+  .column__expand {
+    flex-direction: row;
+    justify-content: center;
+    padding: 0.35rem 0;
+  }
+
+  .column__rail-label {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+}
