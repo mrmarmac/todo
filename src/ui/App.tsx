@@ -181,8 +181,6 @@ export function App() {
           today={state.currentDay}
           onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
           onClear={() => setState((s) => clearDone(s, new Date()))}
-          onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
-          onDelete={(id) => setState((s) => deleteTask(s, id))}
         />
       </main>
       <HistoryPanel history={state.history} />
