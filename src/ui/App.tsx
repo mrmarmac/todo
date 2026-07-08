@@ -36,8 +36,37 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
+/**
+ * Wall-clock ISO date (YYYY-MM-DD), kept current while the app stays open so
+ * due-date labels ("today", "tomorrow", …) roll over at real midnight instead
+ * of anchoring to the manually-advanced currentDay. Re-checks on an interval
+ * and whenever the tab regains visibility/focus, since background tabs throttle
+ * timers and can miss the midnight tick.
+ */
+function useWallClockDay(): string {
+  const [today, setToday] = useState(() => toISODate(new Date()));
+  useEffect(() => {
+    const sync = () => setToday((prev) => {
+      const now = toISODate(new Date());
+      return now === prev ? prev : now;
+    });
+    const id = window.setInterval(sync, 60_000);
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+  return today;
+}
+
 export function App() {
   const [state, setState] = useState<AppState>(() => load());
+  // Due-date labels anchor on the actual wall-clock day, not state.currentDay,
+  // so they stay correct if the app sits open past midnight (see useWallClockDay).
+  const today = useWallClockDay();
   const importInputRef = useRef<HTMLInputElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -155,7 +184,7 @@ export function App() {
       <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
         <MasterColumn
           tasks={state.tasks}
-          today={state.currentDay}
+          today={today}
           addInputRef={addInputRef}
           collapsed={masterCollapsed}
           onToggleCollapse={() => setMasterCollapsed((v) => !v)}
@@ -167,7 +196,7 @@ export function App() {
         />
         <TodayColumn
           tasks={state.tasks}
-          today={state.currentDay}
+          today={today}
           onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
           onRemove={(id) => setState((s) => removeFromToday(s, id))}
           onComplete={(id) => setState((s) => completeTask(s, id))}
@@ -178,7 +207,7 @@ export function App() {
         />
         <DoneColumn
           tasks={state.tasks}
-          today={state.currentDay}
+          today={today}
           onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
           onClear={() => setState((s) => clearDone(s, new Date()))}
         />
