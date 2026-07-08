@@ -269,9 +269,24 @@ input:focus-visible {
   font-weight: 700;
 }
 
-.task--drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--ring);
+/* Drag reorder: a single 2px insertion line shows exactly where the card will
+   land — above the target card (cursor in its top half) or, via the trailing
+   drop zone, after the last card. `margin-top: -1px` absorbs the extra border
+   pixel so surrounding cards don't nudge. */
+.task--insert-before {
+  border-top: 2px solid var(--accent);
+  margin-top: -1px;
+}
+
+.task-list__end {
+  list-style: none;
+  min-height: 1.75rem;
+  border-top: 2px solid transparent;
+  margin-top: -1px;
+}
+
+.task-list__end--active {
+  border-top-color: var(--accent);
 }
 
 .task__drag-handle {

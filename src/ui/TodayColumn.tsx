@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DragEvent } from 'react';
 import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
@@ -19,6 +20,18 @@ interface Props {
   subtaskHandlers: SubtaskHandlers;
 }
 
+/**
+ * The insertion slot (0..N) a card-level drag points at: the top half of the
+ * card at `index` inserts before it (slot = index), the bottom half after it
+ * (slot = index + 1). N slots + 1 = one line between every pair of cards, plus
+ * the ends.
+ */
+function slotForCard(e: DragEvent<HTMLLIElement>, index: number): number {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const inTopHalf = e.clientY < rect.top + rect.height / 2;
+  return inTopHalf ? index : index + 1;
+}
+
 export function TodayColumn({
   tasks,
   today,
@@ -32,14 +45,20 @@ export function TodayColumn({
 }: Props) {
   const todayTasks = tasks.filter((t) => t.column === 'today');
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [insertAt, setInsertAt] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingSubtaskId, setAddingSubtaskId] = useState<string | null>(null);
 
-  function handleDrop(targetIndex: number) {
-    if (draggingId) onReorder(draggingId, targetIndex);
+  // `insertAt` is a slot in the full list (0..N). `reorderToday` expects the
+  // index *after* the dragged card is spliced out, so a slot past the card's
+  // own position shifts down by one.
+  function handleDrop(slot: number) {
+    if (draggingId) {
+      const from = todayTasks.findIndex((t) => t.id === draggingId);
+      onReorder(draggingId, slot > from ? slot - 1 : slot);
+    }
     setDraggingId(null);
-    setOverIndex(null);
+    setInsertAt(null);
   }
 
   return (
@@ -72,7 +91,7 @@ export function TodayColumn({
                 'task task--today' +
                 (task.isActive ? ' task--active' : '') +
                 (draggingId === task.id ? ' task--dragging' : '') +
-                (overIndex === index ? ' task--drop-target' : '')
+                (insertAt === index ? ' task--insert-before' : '')
               }
               tabIndex={0}
               draggable
@@ -107,15 +126,15 @@ export function TodayColumn({
               }}
               onDragOver={(e) => {
                 e.preventDefault();
-                setOverIndex(index);
+                setInsertAt(slotForCard(e, index));
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                handleDrop(index);
+                handleDrop(slotForCard(e, index));
               }}
               onDragEnd={() => {
                 setDraggingId(null);
-                setOverIndex(null);
+                setInsertAt(null);
               }}
             >
               <div className="task__main">
@@ -191,6 +210,23 @@ export function TodayColumn({
             </li>
           );
         })}
+        {draggingId !== null && (
+          <li
+            className={
+              'task-list__end' +
+              (insertAt === todayTasks.length ? ' task-list__end--active' : '')
+            }
+            aria-hidden="true"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setInsertAt(todayTasks.length);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(todayTasks.length);
+            }}
+          />
+        )}
       </ul>
     </section>
   );
