@@ -11,7 +11,6 @@
   --done-bg: #eeeef0;
   --ring: rgba(11, 116, 222, 0.35);
   --btn-bg: #ffffff;
-  --header-bg: #ffffff;
   --pill-bg: #eef2f7;
   --pill-text: #0b74de;
   /* Due-date urgency (task labels) */
@@ -41,7 +40,6 @@
     --done-bg: #1d1d1f;
     --ring: rgba(75, 155, 255, 0.4);
     --btn-bg: #313134;
-    --header-bg: #1d1d1f;
     --pill-bg: #2a3340;
     --pill-text: #7fb5ff;
     --due-overdue: #ff8a8a;
@@ -69,10 +67,6 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  /* Title bar tracks the theme and lines up with the PWA's OS title bar
-     (theme-color meta), so the two read as one continuous bar. */
-  background: var(--header-bg);
-  border-bottom: 1px solid var(--border);
 }
 
 .app__header h1 {
