@@ -3,6 +3,7 @@ import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
+import { Icon } from './Icon';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
 import { DueDate } from './DueDate';
@@ -214,7 +215,7 @@ function MasterTask({
           title="Move to Today"
           onClick={() => onAddToday(task.id)}
         >
-          ➜
+          <Icon name="arrow-right" />
         </button>
         <button
           type="button"
@@ -223,7 +224,7 @@ function MasterTask({
           title="Add subtask (s)"
           onClick={() => setAddingSubtask(true)}
         >
-          ＋
+          <Icon name="plus" />
         </button>
         <button
           type="button"
@@ -232,7 +233,7 @@ function MasterTask({
           title="Edit"
           onClick={() => setEditing(true)}
         >
-          ✎
+          <Icon name="pencil" />
         </button>
         <button
           type="button"
@@ -241,7 +242,7 @@ function MasterTask({
           title="Delete"
           onClick={() => onDelete(task.id)}
         >
-          🗑
+          <Icon name="trash" />
         </button>
       </div>
       <SubtaskList

@@ -438,6 +438,11 @@ input:focus-visible {
   font-size: 0.95rem;
 }
 
+.icon {
+  display: block;
+  margin: 0 auto;
+}
+
 .icon-btn.btn-primary {
   font-weight: 600;
 }

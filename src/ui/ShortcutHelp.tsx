@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Icon } from './Icon';
 
 interface Props {
   onClose: () => void;
@@ -64,7 +65,7 @@ export function ShortcutHelp({ onClose }: Props) {
         <div className="shortcut-help__head">
           <h2>Keyboard shortcuts</h2>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-            ✕
+            <Icon name="x" />
           </button>
         </div>
         {GROUPS.map((group) => (

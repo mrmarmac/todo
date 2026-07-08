@@ -4,6 +4,7 @@ import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
 import { DueDate } from './DueDate';
+import { Icon } from './Icon';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
 
 const noopSubtaskHandlers = {
@@ -88,7 +89,7 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear, onUpdate, onDe
                   title="Undo (back to Today)"
                   onClick={() => onUncomplete(task.id)}
                 >
-                  ↺
+                  <Icon name="rotate-ccw" />
                 </button>
                 <button
                   type="button"
@@ -97,7 +98,7 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear, onUpdate, onDe
                   title="Edit"
                   onClick={() => setEditingId(task.id)}
                 >
-                  ✎
+                  <Icon name="pencil" />
                 </button>
                 <button
                   type="button"
@@ -106,7 +107,7 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear, onUpdate, onDe
                   title="Delete"
                   onClick={() => onDelete(task.id)}
                 >
-                  🗑
+                  <Icon name="trash" />
                 </button>
               </div>
               <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />

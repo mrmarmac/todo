@@ -5,6 +5,7 @@ import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
 import { DueDate } from './DueDate';
 import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
+import { Icon } from './Icon';
 
 interface Props {
   tasks: Task[];
@@ -141,7 +142,7 @@ export function TodayColumn({
                   title={openSubtasks ? 'Finish all subtasks first' : 'Complete'}
                   onClick={() => onComplete(task.id)}
                 >
-                  ✓
+                  <Icon name="check" />
                 </button>
                 <button
                   type="button"
@@ -150,7 +151,7 @@ export function TodayColumn({
                   title="Add subtask (s)"
                   onClick={() => setAddingSubtaskId(task.id)}
                 >
-                  ＋
+                  <Icon name="plus" />
                 </button>
                 <button
                   type="button"
@@ -159,7 +160,7 @@ export function TodayColumn({
                   title="Edit"
                   onClick={() => setEditingId(task.id)}
                 >
-                  ✎
+                  <Icon name="pencil" />
                 </button>
                 <button
                   type="button"
@@ -168,7 +169,7 @@ export function TodayColumn({
                   title="Remove from Today"
                   onClick={() => onRemove(task.id)}
                 >
-                  ↩
+                  <Icon name="arrow-left" />
                 </button>
                 <button
                   type="button"
@@ -177,7 +178,7 @@ export function TodayColumn({
                   title="Delete"
                   onClick={() => onDelete(task.id)}
                 >
-                  🗑
+                  <Icon name="trash" />
                 </button>
               </div>
               <SubtaskList
