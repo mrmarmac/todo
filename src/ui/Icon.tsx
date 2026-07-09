@@ -8,7 +8,9 @@ export type IconName =
   | 'trash'
   | 'x'
   | 'rotate-ccw'
-  | 'check';
+  | 'check'
+  | 'chevron-up'
+  | 'chevron-down';
 
 /**
  * Inline stroke icons (24×24, lucide-style). They draw with `currentColor` and
@@ -63,6 +65,16 @@ const PATHS: Record<IconName, ReactElement> = {
   check: (
     <>
       <path d="M20 6L9 17l-5-5" />
+    </>
+  ),
+  'chevron-up': (
+    <>
+      <path d="M18 15l-6-6-6 6" />
+    </>
+  ),
+  'chevron-down': (
+    <>
+      <path d="M6 9l6 6 6-6" />
     </>
   ),
 };

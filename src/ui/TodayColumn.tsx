@@ -153,6 +153,26 @@ export function TodayColumn({
               <div className="task__actions">
                 <button
                   type="button"
+                  className="icon-btn task__move"
+                  disabled={index === 0}
+                  aria-label="Move up"
+                  title="Move up"
+                  onClick={() => onReorder(task.id, index - 1)}
+                >
+                  <Icon name="chevron-up" />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn task__move"
+                  disabled={index === todayTasks.length - 1}
+                  aria-label="Move down"
+                  title="Move down"
+                  onClick={() => onReorder(task.id, index + 1)}
+                >
+                  <Icon name="chevron-down" />
+                </button>
+                <button
+                  type="button"
                   className="icon-btn btn-primary"
                   disabled={openSubtasks}
                   aria-label="Complete"
