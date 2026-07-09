@@ -66,7 +66,7 @@ export function TodayColumn({
     <section className="column column--today">
       <h2>Today</h2>
       {todayTasks.length === 0 && (
-        <p className="column__placeholder">Add tasks from Master with “→ Today”.</p>
+        <p className="column__placeholder">Add tasks from Master with “→”.</p>
       )}
       <ul className="task-list">
         {todayTasks.map((task, index) => {

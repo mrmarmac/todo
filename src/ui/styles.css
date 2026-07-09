@@ -726,6 +726,45 @@ kbd {
   font-weight: 600;
 }
 
+/* Overflow menu holding the less-used Export/Import actions. */
+.app__menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.app__menu-btn {
+  font-weight: 600;
+  line-height: 1;
+}
+
+.app__menu-list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 8rem;
+  padding: 0.25rem;
+  gap: 0.15rem;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.app__menu-list button {
+  border: none;
+  background: none;
+  text-align: left;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+}
+
+.app__menu-list button:hover:not(:disabled) {
+  background: var(--active-bg);
+}
+
 /* ── Collapsed Master rail (plan R2 §1) ────────────────────────────────── */
 .column--collapsed {
   padding: 0.75rem 0.2rem;

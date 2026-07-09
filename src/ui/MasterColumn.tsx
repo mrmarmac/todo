@@ -145,6 +145,10 @@ function AddTaskForm({
                 key={q.label}
                 type="button"
                 className={'add-form__chip' + (dueDate === q.value ? ' add-form__chip--active' : '')}
+                // Prevent the chip from stealing focus from the title input on
+                // mousedown: the advanced panel is revealed via :focus-within, so
+                // a focus shift would collapse it before the click registers.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pickQuick(q.value)}
               >
                 {q.label}
@@ -166,7 +170,14 @@ function AddTaskForm({
             />
             Recurring
           </label>
-          <button type="submit" className="add-form__submit" disabled={title.trim() === ''}>
+          <button
+            type="submit"
+            className="add-form__submit"
+            // Same focus-preservation as the chips (see above) so the panel
+            // does not collapse out from under the click on mousedown.
+            onMouseDown={(e) => e.preventDefault()}
+            disabled={title.trim() === ''}
+          >
             Add
           </button>
         </div>
