@@ -76,12 +76,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: calc(1rem + env(safe-area-inset-top)) calc(1.5rem + env(safe-area-inset-right)) 1rem
+    calc(1.5rem + env(safe-area-inset-left));
 }
 
 .app__header h1 {
   margin: 0;
   font-size: 1.4rem;
+}
+
+.app__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
 }
 
 .app__day {
@@ -93,6 +100,7 @@ body {
 .app__day-label {
   color: var(--muted);
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .board {
@@ -128,6 +136,38 @@ body {
 
   .column--master {
     order: 3;
+  }
+
+  /* Compact header: title stays on one line (no mid-word wrap), the day
+     label drops its "Day: " prefix and never wraps, and the action buttons
+     wrap to a second row rather than squeezing / breaking mid-word. */
+  .app__header {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    padding: calc(0.75rem + env(safe-area-inset-top)) calc(1rem + env(safe-area-inset-right))
+      0.5rem calc(1rem + env(safe-area-inset-left));
+  }
+
+  .app__header h1 {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  .app__title-row {
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .app__day-label {
+    font-size: 0.8rem;
+  }
+
+  .app__day-label__prefix {
+    display: none;
+  }
+
+  .app__day {
+    gap: 0.4rem;
   }
 }
 
@@ -1094,4 +1134,95 @@ kbd {
   border-radius: 8px;
   padding: 0.5rem 0.6rem;
   font-size: 0.85rem;
+}
+
+/* ── Mobile quick-add (FAB + panel) ────────────────────────────────────── */
+/* Desktop already has MasterColumn's own "New task…" field in view, so the
+   FAB only appears in the stacked mobile layout (@media max-width: 900px,
+   above) where Master — and its add form — sits at the bottom of the scroll.
+   Hidden here by default so it can never appear above that breakpoint. */
+.quick-add-fab {
+  display: none;
+  position: fixed;
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  width: 3.25rem;
+  height: 3.25rem;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  z-index: 60;
+}
+
+.quick-add-fab:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}
+
+.quick-add-fab .icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.quick-add__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 55;
+}
+
+/* The panel sits directly above the FAB so opening it reads as one motion. */
+.quick-add {
+  display: none;
+  position: fixed;
+  left: calc(1rem + env(safe-area-inset-left));
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  z-index: 60;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  background: var(--col-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+}
+
+.quick-add__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--btn-bg);
+  color: var(--text);
+}
+
+.quick-add__close {
+  min-width: auto;
+}
+
+/* Master's own "New task…" field sits at the bottom of the stacked mobile
+   scroll (order 3, below Today/Done) — the FAB gives one-tap access without
+   scrolling the whole page. This override must come after the base
+   `display: none` rules above (equal specificity — plain media queries add
+   none of their own — so source order decides, and this block needs to win). */
+@media (max-width: 900px) {
+  .quick-add-fab {
+    display: flex;
+  }
+
+  .quick-add,
+  .quick-add__backdrop {
+    display: flex;
+  }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppState } from '../core/types';
+import type { CreateTaskInput } from '../core/state';
 import {
   createTask,
   updateTask,
@@ -29,6 +30,7 @@ import { DoneColumn } from './DoneColumn';
 import { HistoryPanel } from './HistoryPanel';
 import { ShortcutHelp } from './ShortcutHelp';
 import { SyncSettings } from './SyncSettings';
+import { QuickAdd } from './QuickAdd';
 import { useGistSync, syncStatusLabel } from './useGistSync';
 import { useConfirm } from './ConfirmDialog';
 
@@ -163,6 +165,10 @@ export function App() {
     if (ok) setState(restored);
   };
 
+  // Shared create path so QuickAdd (mobile FAB) lands tasks the exact same
+  // way as MasterColumn's own "New task…" field — both funnel through here.
+  const handleCreateTask = (input: CreateTaskInput) => setState((s) => createTask(s, input));
+
   const subtaskHandlers: SubtaskHandlers = {
     onAddSubtask: (taskId, title) => setState((s) => addSubtask(s, taskId, title)),
     onUpdateSubtask: (taskId, subtaskId, patch) =>
@@ -192,9 +198,14 @@ export function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <h1>To-Do</h1>
+        <div className="app__title-row">
+          <h1>To-Do</h1>
+          <span className="app__day-label">
+            <span className="app__day-label__prefix">Day: </span>
+            {state.currentDay}
+          </span>
+        </div>
         <div className="app__day">
-          <span className="app__day-label">Day: {state.currentDay}</span>
           <button type="button" className="app__new-day" onClick={handleStartNewDay}>
             New Day
           </button>
@@ -281,7 +292,7 @@ export function App() {
           addInputRef={addInputRef}
           collapsed={masterCollapsed}
           onToggleCollapse={() => setMasterCollapsed((v) => !v)}
-          onCreate={(input) => setState((s) => createTask(s, input))}
+          onCreate={handleCreateTask}
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
           onDelete={(id) => setState((s) => deleteTask(s, id))}
           onAddToday={(id) => setState((s) => moveToToday(s, id))}
@@ -306,6 +317,7 @@ export function App() {
         />
       </main>
       <HistoryPanel history={state.history} />
+      <QuickAdd onCreate={handleCreateTask} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
