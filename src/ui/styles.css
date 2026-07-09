@@ -658,6 +658,25 @@ input:focus-visible {
   .task:not(.task--editing):focus-within .subtask__actions {
     opacity: 1;
   }
+
+  /* Move up/down is a touch-only affordance; desktop reorders by drag. */
+  .task__move {
+    display: none;
+  }
+}
+
+/* Touch devices get no HTML5 drag-and-drop and no hover, so the drag handle is
+   dead weight — hide it and let the Move up/down buttons do the reordering.
+   Bump the icon buttons to a comfortable tap target while we're here. */
+@media (hover: none) {
+  .task__drag-handle {
+    display: none;
+  }
+
+  .icon-btn {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
 }
 
 /* ── Shortcut cheatsheet overlay (plan §2) ─────────────────────────────── */
