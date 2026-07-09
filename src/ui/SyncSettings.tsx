@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { syncStatusLabel } from './useGistSync';
 import type { UseGistSyncResult } from './useGistSync';
+import type { ConfirmOptions } from './ConfirmDialog';
 
 interface Props {
   sync: UseGistSyncResult;
+  /** In-app confirm prompt, passed down from App's single {@link useConfirm} instance. */
+  confirm: (opts: ConfirmOptions) => Promise<boolean>;
   onClose: () => void;
 }
 
@@ -27,7 +30,7 @@ function formatLastSynced(iso: string | null): string {
 }
 
 /** Modal dialog for connecting/disconnecting/inspecting Gist sync (imitates ShortcutHelp's structure). */
-export function SyncSettings({ sync, onClose }: Props) {
+export function SyncSettings({ sync, confirm, onClose }: Props) {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -55,11 +58,14 @@ export function SyncSettings({ sync, onClose }: Props) {
     }
   };
 
-  const handleDisconnect = () => {
-    const ok = window.confirm(
-      'Disconnect sync on this device?\n\n' +
-        'Local data stays as-is and the gist on GitHub is not deleted — you can reconnect later.',
-    );
+  const handleDisconnect = async () => {
+    const ok = await confirm({
+      title: 'Disconnect sync on this device?',
+      body: 'Local data stays as-is and the gist on GitHub is not deleted — you can reconnect later.',
+      confirmLabel: 'Disconnect',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
     if (ok) sync.disconnect();
   };
 

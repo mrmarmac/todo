@@ -30,6 +30,7 @@ import { HistoryPanel } from './HistoryPanel';
 import { ShortcutHelp } from './ShortcutHelp';
 import { SyncSettings } from './SyncSettings';
 import { useGistSync, syncStatusLabel } from './useGistSync';
+import { useConfirm } from './ConfirmDialog';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -77,7 +78,8 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
   const [masterCollapsed, setMasterCollapsed] = useState(false);
-  const sync = useGistSync(state, setState);
+  const { confirm, dialog } = useConfirm();
+  const sync = useGistSync(state, setState, confirm);
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
@@ -140,15 +142,25 @@ export function App() {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-importing the same file later
     if (!file) return;
+    let restored: AppState;
     try {
-      const restored = importState(await file.text());
-      const ok = window.confirm(
-        'Import this file?\n\nThis replaces ALL current data with the file’s contents and cannot be undone.',
-      );
-      if (ok) setState(restored);
+      restored = importState(await file.text());
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Import failed.');
+      await confirm({
+        title: 'Import failed',
+        body: err instanceof Error ? err.message : 'Import failed.',
+        confirmLabel: 'OK',
+      });
+      return;
     }
+    const ok = await confirm({
+      title: 'Import this file?',
+      body: 'This replaces ALL current data with the file’s contents and cannot be undone.',
+      confirmLabel: 'Replace everything',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (ok) setState(restored);
   };
 
   const subtaskHandlers: SubtaskHandlers = {
@@ -164,12 +176,16 @@ export function App() {
       setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
-  const handleStartNewDay = () => {
-    const ok = window.confirm(
-      'Start a new day?\n\n' +
+  const handleStartNewDay = async () => {
+    const ok = await confirm({
+      title: 'Start a new day?',
+      body:
         'This collapses Done into History, returns unfinished tasks to Master, ' +
         'and discards unfinished recurring day-copies. This cannot be undone.',
-    );
+      confirmLabel: 'Start new day',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
     if (ok) setState((s) => startNewDay(s, new Date()));
   };
 
@@ -291,7 +307,10 @@ export function App() {
       </main>
       <HistoryPanel history={state.history} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
-      {showSync && <SyncSettings sync={sync} onClose={() => setShowSync(false)} />}
+      {showSync && (
+        <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
+      )}
+      {dialog}
     </div>
   );
 }

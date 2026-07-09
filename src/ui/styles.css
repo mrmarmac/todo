@@ -13,6 +13,8 @@
   --btn-bg: #ffffff;
   --pill-bg: #eef2f7;
   --pill-text: #0b74de;
+  /* Destructive action accent (confirm dialogs) */
+  --danger: #c81e1e;
   /* Due-date urgency (task labels) */
   --due-overdue: #c81e1e;
   --due-overdue-bg: #fdeaea;
@@ -46,6 +48,7 @@
     --btn-bg: #313134;
     --pill-bg: #2a3340;
     --pill-text: #7fb5ff;
+    --danger: #ff8a8a;
     --due-overdue: #ff8a8a;
     --due-overdue-bg: #3a1f22;
     --due-today: #ffc078;
@@ -397,6 +400,19 @@ input:focus-visible {
   font-weight: 600;
 }
 
+/* Destructive confirm button (see ConfirmDialog). Outline like btn-primary but
+   in the danger colour; the hover override keeps it from turning accent-blue. */
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .task--today {
   cursor: grab;
 }
@@ -745,6 +761,52 @@ kbd {
   padding: 0.1rem 0.4rem;
   color: var(--text);
   white-space: nowrap;
+}
+
+/* ── In-app confirm / alert dialog (replaces native browser prompts) ───── */
+.confirm-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Above the sync/shortcut modals so a prompt raised from one sits on top. */
+  z-index: 200;
+}
+
+.confirm-dialog {
+  background: var(--col-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.confirm-dialog__body {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.confirm-dialog__body p {
+  margin: 0 0 0.6rem;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
 }
 
 /* Header hint button that opens the cheatsheet. */

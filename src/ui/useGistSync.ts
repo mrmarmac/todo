@@ -12,6 +12,7 @@ import {
   SyncError,
 } from '../core/gistSync';
 import type { SyncConfig, SyncEnvelope, ReconcileDecision } from '../core/gistSync';
+import type { ConfirmOptions } from './ConfirmDialog';
 
 /**
  * React hook owning all Gist-sync orchestration (SPEC: cross-device sync).
@@ -51,13 +52,13 @@ function buildEnvelope(state: AppState, modifiedAt: string): SyncEnvelope {
 
 const CONFLICT_MESSAGE =
   'This to-do list changed on both this device and another device since the last sync.\n\n' +
-  'Press OK to use the OTHER device’s data (this device’s recent changes will be lost).\n' +
-  'Press Cancel to keep THIS device’s data (the other device’s recent changes will be overwritten).';
+  'Using the other device’s data discards this device’s recent changes. ' +
+  'Keeping this device’s data overwrites the other device’s recent changes.';
 
 const CONNECT_EXISTING_DATA_MESSAGE =
   'This GitHub account already has synced to-do data, and this device also has local data.\n\n' +
-  'Press OK to use the SYNCED data (this device’s local data will be lost).\n' +
-  'Press Cancel to keep THIS device’s data (the synced data on GitHub will be overwritten).';
+  'Using the synced data discards this device’s local data. ' +
+  'Keeping this device’s data overwrites the synced data on GitHub.';
 
 const GIST_NOT_FOUND_MESSAGE =
   'The sync gist could not be found on GitHub (it may have been deleted). Please reconnect to sync again.';
@@ -93,6 +94,12 @@ export interface UseGistSyncResult {
 export function useGistSync(
   state: AppState,
   setState: React.Dispatch<React.SetStateAction<AppState>>,
+  /**
+   * Opens an in-app confirm dialog and resolves the user's choice — supplied by
+   * {@link ../ui/App} from {@link ./ConfirmDialog.useConfirm} so sync prompts
+   * never fall back to a native browser confirm.
+   */
+  confirmDialog: (opts: ConfirmOptions) => Promise<boolean>,
 ): UseGistSyncResult {
   const [config, setConfig] = useState<SyncConfig | null>(() => loadSyncConfig());
   const [status, setStatus] = useState<SyncStatus>(() => (loadSyncConfig() ? 'syncing' : 'disconnected'));
@@ -164,13 +171,18 @@ export function useGistSync(
       } else if (decision === 'push') {
         await pushLocal(cfg);
       } else if (decision === 'conflict') {
-        const useRemote = window.confirm(CONFLICT_MESSAGE);
+        const useRemote = await confirmDialog({
+          title: 'Sync conflict',
+          body: CONFLICT_MESSAGE,
+          confirmLabel: 'Use other device’s data',
+          cancelLabel: 'Keep this device’s data',
+        });
         if (useRemote) applyRemote(cfg, remote);
         else await pushLocal(cfg);
       }
       // 'noop': nothing to do.
     },
-    [applyRemote, pushLocal],
+    [applyRemote, pushLocal, confirmDialog],
   );
 
   /**
@@ -303,7 +315,14 @@ export function useGistSync(
           const cfgStub: Pick<SyncConfig, 'token' | 'gistId'> = { token, gistId };
           const remote = await pullEnvelope(cfgStub);
           const localEmpty = stateRef.current.tasks.length === 0 && stateRef.current.history.length === 0;
-          const useRemote = localEmpty || window.confirm(CONNECT_EXISTING_DATA_MESSAGE);
+          const useRemote =
+            localEmpty ||
+            (await confirmDialog({
+              title: 'Existing synced data',
+              body: CONNECT_EXISTING_DATA_MESSAGE,
+              confirmLabel: 'Use synced data',
+              cancelLabel: 'Keep this device’s data',
+            }));
           if (useRemote) {
             suppressNextDirtyRef.current = true;
             setState(remote.state);
@@ -335,7 +354,7 @@ export function useGistSync(
         inFlightRef.current = false;
       }
     },
-    [setState, handleSyncError],
+    [setState, handleSyncError, confirmDialog],
   );
 
   const disconnect = useCallback(() => {
