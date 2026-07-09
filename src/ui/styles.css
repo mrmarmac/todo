@@ -13,6 +13,8 @@
   --btn-bg: #ffffff;
   --pill-bg: #eef2f7;
   --pill-text: #0b74de;
+  /* Destructive action accent (confirm dialogs) */
+  --danger: #c81e1e;
   /* Due-date urgency (task labels) */
   --due-overdue: #c81e1e;
   --due-overdue-bg: #fdeaea;
@@ -46,6 +48,7 @@
     --btn-bg: #313134;
     --pill-bg: #2a3340;
     --pill-text: #7fb5ff;
+    --danger: #ff8a8a;
     --due-overdue: #ff8a8a;
     --due-overdue-bg: #3a1f22;
     --due-today: #ffc078;
@@ -73,12 +76,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: calc(1rem + env(safe-area-inset-top)) calc(1.5rem + env(safe-area-inset-right)) 1rem
+    calc(1.5rem + env(safe-area-inset-left));
 }
 
 .app__header h1 {
   margin: 0;
   font-size: 1.4rem;
+}
+
+.app__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
 }
 
 .app__day {
@@ -90,6 +100,7 @@ body {
 .app__day-label {
   color: var(--muted);
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .board {
@@ -125,6 +136,38 @@ body {
 
   .column--master {
     order: 3;
+  }
+
+  /* Compact header: title stays on one line (no mid-word wrap), the day
+     label drops its "Day: " prefix and never wraps, and the action buttons
+     wrap to a second row rather than squeezing / breaking mid-word. */
+  .app__header {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    padding: calc(0.75rem + env(safe-area-inset-top)) calc(1rem + env(safe-area-inset-right))
+      0.5rem calc(1rem + env(safe-area-inset-left));
+  }
+
+  .app__header h1 {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  .app__title-row {
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .app__day-label {
+    font-size: 0.8rem;
+  }
+
+  .app__day-label__prefix {
+    display: none;
+  }
+
+  .app__day {
+    gap: 0.4rem;
   }
 }
 
@@ -264,17 +307,17 @@ button:disabled {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .task {
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 0.3rem 0.7rem;
+  padding: 0.2rem 0.6rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
   transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -299,7 +342,7 @@ input:focus-visible {
 .task__main {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
 }
 
@@ -395,6 +438,19 @@ input:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Destructive confirm button (see ConfirmDialog). Outline like btn-primary but
+   in the danger colour; the hover override keeps it from turning accent-blue. */
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .task--today {
@@ -551,18 +607,18 @@ input:focus-visible {
 
 .subtask-list {
   list-style: none;
-  margin: 0.4rem 0 0;
+  margin: 0.3rem 0 0;
   padding: 0 0 0 0.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .subtask {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   font-size: 0.85rem;
 }
 
@@ -606,7 +662,7 @@ input:focus-visible {
 .subtask-add {
   display: flex;
   gap: 0.3rem;
-  margin-top: 0.4rem;
+  margin-top: 0.3rem;
   padding-left: 0.25rem;
 }
 
@@ -644,19 +700,76 @@ input:focus-visible {
 
 /* Hover/focus reveal: only on devices that actually hover (desktop). On touch
    (future iPhone) the @media guard is false, so actions stay visible. Editing
-   cards are excluded so the Save/Cancel row is never hidden. */
+   cards are excluded so the Save/Cancel row is never hidden.
+
+   .task__actions is lifted out of flow into a top-right overlay so cards
+   shrink to their content instead of every card reserving a permanent band
+   of empty space for the (usually invisible) action row. The overlay sits
+   inside the card's own padded box (not viewport-fixed), so it can never be
+   clipped by a column/list ancestor. Hidden state uses opacity+pointer-events
+   (not visibility) so :focus-within reveal still works for keyboard users —
+   the card itself is tabIndex=0, so focus lands on .task before the user
+   tabs into the buttons, and pointer-events: none keeps invisible buttons
+   from being clickable while opacity is 0. */
 @media (hover: hover) {
-  .task:not(.task--editing) .task__actions,
+  .task:not(.task--editing) {
+    position: relative;
+  }
+
+  .task:not(.task--editing) .task__actions {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    z-index: 1;
+    padding: 0.2rem 0.3rem;
+    background: var(--col-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+  }
+
   .task:not(.task--editing) .subtask__actions {
     opacity: 0;
     transition: opacity 0.12s ease;
   }
 
   .task:not(.task--editing):hover .task__actions,
-  .task:not(.task--editing):focus-within .task__actions,
+  .task:not(.task--editing):focus-within .task__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .task:not(.task--editing):hover .subtask__actions,
   .task:not(.task--editing):focus-within .subtask__actions {
     opacity: 1;
+  }
+
+  /* Move up/down is a touch-only affordance; desktop reorders by drag. */
+  .task__move {
+    display: none;
+  }
+}
+
+/* Touch devices get no HTML5 drag-and-drop and no hover, so the drag handle is
+   dead weight — hide it and let the Move up/down buttons do the reordering.
+   Bump the icon buttons to a comfortable tap target while we're here. Actions
+   stay in-flow and always visible (no hover to reveal them on touch), but
+   with a tighter gap to keep the row compact. */
+@media (hover: none) {
+  .task__drag-handle {
+    display: none;
+  }
+
+  .icon-btn {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+
+  .task__actions {
+    gap: 0.3rem;
   }
 }
 
@@ -726,6 +839,52 @@ kbd {
   padding: 0.1rem 0.4rem;
   color: var(--text);
   white-space: nowrap;
+}
+
+/* ── In-app confirm / alert dialog (replaces native browser prompts) ───── */
+.confirm-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Above the sync/shortcut modals so a prompt raised from one sits on top. */
+  z-index: 200;
+}
+
+.confirm-dialog {
+  background: var(--col-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.confirm-dialog__body {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.confirm-dialog__body p {
+  margin: 0 0 0.6rem;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
 }
 
 /* Header hint button that opens the cheatsheet. */
@@ -975,4 +1134,95 @@ kbd {
   border-radius: 8px;
   padding: 0.5rem 0.6rem;
   font-size: 0.85rem;
+}
+
+/* ── Mobile quick-add (FAB + panel) ────────────────────────────────────── */
+/* Desktop already has MasterColumn's own "New task…" field in view, so the
+   FAB only appears in the stacked mobile layout (@media max-width: 900px,
+   above) where Master — and its add form — sits at the bottom of the scroll.
+   Hidden here by default so it can never appear above that breakpoint. */
+.quick-add-fab {
+  display: none;
+  position: fixed;
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  width: 3.25rem;
+  height: 3.25rem;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  z-index: 60;
+}
+
+.quick-add-fab:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}
+
+.quick-add-fab .icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.quick-add__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 55;
+}
+
+/* The panel sits directly above the FAB so opening it reads as one motion. */
+.quick-add {
+  display: none;
+  position: fixed;
+  left: calc(1rem + env(safe-area-inset-left));
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  z-index: 60;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  background: var(--col-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+}
+
+.quick-add__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--btn-bg);
+  color: var(--text);
+}
+
+.quick-add__close {
+  min-width: auto;
+}
+
+/* Master's own "New task…" field sits at the bottom of the stacked mobile
+   scroll (order 3, below Today/Done) — the FAB gives one-tap access without
+   scrolling the whole page. This override must come after the base
+   `display: none` rules above (equal specificity — plain media queries add
+   none of their own — so source order decides, and this block needs to win). */
+@media (max-width: 900px) {
+  .quick-add-fab {
+    display: flex;
+  }
+
+  .quick-add,
+  .quick-add__backdrop {
+    display: flex;
+  }
 }

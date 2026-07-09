@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppState } from '../core/types';
+import type { CreateTaskInput } from '../core/state';
 import {
   createTask,
   updateTask,
@@ -29,7 +30,9 @@ import { DoneColumn } from './DoneColumn';
 import { HistoryPanel } from './HistoryPanel';
 import { ShortcutHelp } from './ShortcutHelp';
 import { SyncSettings } from './SyncSettings';
+import { QuickAdd } from './QuickAdd';
 import { useGistSync, syncStatusLabel } from './useGistSync';
+import { useConfirm } from './ConfirmDialog';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -77,7 +80,8 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
   const [masterCollapsed, setMasterCollapsed] = useState(false);
-  const sync = useGistSync(state, setState);
+  const { confirm, dialog } = useConfirm();
+  const sync = useGistSync(state, setState, confirm);
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
@@ -140,16 +144,30 @@ export function App() {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-importing the same file later
     if (!file) return;
+    let restored: AppState;
     try {
-      const restored = importState(await file.text());
-      const ok = window.confirm(
-        'Import this file?\n\nThis replaces ALL current data with the file’s contents and cannot be undone.',
-      );
-      if (ok) setState(restored);
+      restored = importState(await file.text());
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Import failed.');
+      await confirm({
+        title: 'Import failed',
+        body: err instanceof Error ? err.message : 'Import failed.',
+        confirmLabel: 'OK',
+      });
+      return;
     }
+    const ok = await confirm({
+      title: 'Import this file?',
+      body: 'This replaces ALL current data with the file’s contents and cannot be undone.',
+      confirmLabel: 'Replace everything',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (ok) setState(restored);
   };
+
+  // Shared create path so QuickAdd (mobile FAB) lands tasks the exact same
+  // way as MasterColumn's own "New task…" field — both funnel through here.
+  const handleCreateTask = (input: CreateTaskInput) => setState((s) => createTask(s, input));
 
   const subtaskHandlers: SubtaskHandlers = {
     onAddSubtask: (taskId, title) => setState((s) => addSubtask(s, taskId, title)),
@@ -164,21 +182,30 @@ export function App() {
       setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
-  const handleStartNewDay = () => {
-    const ok = window.confirm(
-      'Start a new day?\n\n' +
+  const handleStartNewDay = async () => {
+    const ok = await confirm({
+      title: 'Start a new day?',
+      body:
         'This collapses Done into History, returns unfinished tasks to Master, ' +
         'and discards unfinished recurring day-copies. This cannot be undone.',
-    );
+      confirmLabel: 'Start new day',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
     if (ok) setState((s) => startNewDay(s, new Date()));
   };
 
   return (
     <div className="app">
       <header className="app__header">
-        <h1>To-Do</h1>
+        <div className="app__title-row">
+          <h1>To-Do</h1>
+          <span className="app__day-label">
+            <span className="app__day-label__prefix">Day: </span>
+            {state.currentDay}
+          </span>
+        </div>
         <div className="app__day">
-          <span className="app__day-label">Day: {state.currentDay}</span>
           <button type="button" className="app__new-day" onClick={handleStartNewDay}>
             New Day
           </button>
@@ -265,7 +292,7 @@ export function App() {
           addInputRef={addInputRef}
           collapsed={masterCollapsed}
           onToggleCollapse={() => setMasterCollapsed((v) => !v)}
-          onCreate={(input) => setState((s) => createTask(s, input))}
+          onCreate={handleCreateTask}
           onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
           onDelete={(id) => setState((s) => deleteTask(s, id))}
           onAddToday={(id) => setState((s) => moveToToday(s, id))}
@@ -290,8 +317,12 @@ export function App() {
         />
       </main>
       <HistoryPanel history={state.history} />
+      <QuickAdd onCreate={handleCreateTask} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
-      {showSync && <SyncSettings sync={sync} onClose={() => setShowSync(false)} />}
+      {showSync && (
+        <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
+      )}
+      {dialog}
     </div>
   );
 }
