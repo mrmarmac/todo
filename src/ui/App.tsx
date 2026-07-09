@@ -69,7 +69,9 @@ export function App() {
   const today = useWallClockDay();
   const importInputRef = useRef<HTMLInputElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
   const [masterCollapsed, setMasterCollapsed] = useState(false);
 
@@ -99,6 +101,25 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Close the overflow menu on an outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const handleExport = () => {
     const json = exportState(state);
@@ -155,14 +176,45 @@ export function App() {
         <div className="app__day">
           <span className="app__day-label">Day: {state.currentDay}</span>
           <button type="button" className="app__new-day" onClick={handleStartNewDay}>
-            Start New Day
+            New Day
           </button>
-          <button type="button" onClick={handleExport}>
-            Export
-          </button>
-          <button type="button" onClick={() => importInputRef.current?.click()}>
-            Import
-          </button>
+          <div className="app__menu" ref={menuRef}>
+            <button
+              type="button"
+              className="app__menu-btn"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="More actions"
+              title="More actions"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="app__menu-list" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleExport();
+                  }}
+                >
+                  Export
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    importInputRef.current?.click();
+                  }}
+                >
+                  Import
+                </button>
+              </div>
+            )}
+          </div>
           <input
             ref={importInputRef}
             type="file"
