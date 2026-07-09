@@ -20,6 +20,10 @@
   --due-today-bg: #fdf1e0;
   --due-soon: #8a6d00;
   --due-soon-bg: #fbf4d6;
+  /* Sync status dot (header + SyncSettings) */
+  --sync-ok: #1a7f37;
+  --sync-warn: #b45309;
+  --sync-error: #c81e1e;
   /* Let native controls (date picker, checkbox) follow the theme. */
   color-scheme: light dark;
 }
@@ -48,6 +52,9 @@
     --due-today-bg: #3a2c1a;
     --due-soon: #e6d27a;
     --due-soon-bg: #322f1c;
+    --sync-ok: #4ac26b;
+    --sync-warn: #ffc078;
+    --sync-error: #ff8a8a;
   }
 }
 
@@ -834,4 +841,138 @@ kbd {
     writing-mode: horizontal-tb;
     text-orientation: mixed;
   }
+}
+
+/* ── Sync (gist sync UI) ───────────────────────────────────────────────── */
+
+/* Quiet header dot: only shown while connected or on error (App.tsx). */
+.app__sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+  padding: 0.35rem;
+  line-height: 1;
+}
+
+.sync-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.sync-dot--synced {
+  background: var(--sync-ok);
+}
+
+.sync-dot--syncing,
+.sync-dot--offline {
+  background: var(--sync-warn);
+}
+
+.sync-dot--error {
+  background: var(--sync-error);
+}
+
+.sync-dot--disconnected {
+  background: var(--muted);
+}
+
+.sync-settings__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.sync-settings {
+  background: var(--col-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.sync-settings__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.sync-settings__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.sync-settings__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.sync-settings__body p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.sync-settings__token-link,
+.sync-settings__gist-link {
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.sync-settings__token-link:hover,
+.sync-settings__gist-link:hover {
+  text-decoration: underline;
+}
+
+.sync-settings__form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sync-settings__form input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--btn-bg);
+  color: var(--text);
+}
+
+.sync-settings__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.sync-settings__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sync-settings__note {
+  font-size: 0.8rem;
+}
+
+.sync-settings__error {
+  color: var(--due-overdue);
+  background: var(--due-overdue-bg);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
 }

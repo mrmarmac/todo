@@ -161,3 +161,15 @@ Interactions: click to move task from Master→Today, remove control on Today ta
 11. Tasks editable and deletable from any column, with the recurring-master deletion rule honoured.
 12. Full app state exports to JSON and restores via import.
 13. Completions can be undone (Done→Today; subtask un-tick while the parent is in Today) until cleared to History; Today tasks can be manually returned to Master.
+14. Cross-device sync (§12) reflects local edits to the connected gist within a few seconds, applies remote edits made on another device, and prompts before either side is overwritten when both changed since the last sync.
+
+## 12. Cross-Device Sync
+
+Optional, off by default. A private ("secret") GitHub gist holds the full app state as a single JSON envelope (`{ schemaVersion, modifiedAt, state }`); sync is last-write-wins by `modifiedAt`, with a conflict prompt when both sides changed since the last sync.
+
+- **Connect**: user supplies a GitHub personal access token scoped to `gist` only (Sync… dialog, reachable from the header status dot and the overflow menu). The app looks for an existing sync gist under that token; if found, it is pulled (silently applied if this device has no tasks/history yet, otherwise the user is asked which side to keep); if none is found, a new gist is created from the current state. The token is stored only in this device's `localStorage`.
+- **Push on change**: local edits are pushed to the gist a few seconds after the last change (debounced), after re-checking the remote hasn't moved in the meantime.
+- **Pull on load / focus**: the gist is checked once on app load and again whenever the tab regains focus (throttled), so a device picks up another device's edits without a manual action.
+- **Conflict**: when both the local device and the gist changed since the last successful sync, the user is asked which copy to keep; the other is overwritten.
+- **Disconnect**: stops syncing on this device only. Local data is untouched and the gist is not deleted — reconnecting with the same token resumes sync against it.
+- **Status**: a small header indicator (shown once connected, or on error) reflects synced / syncing / offline / error; the Sync… dialog shows the same status plus a link to the gist and a manual "Sync now".

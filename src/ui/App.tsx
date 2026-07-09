@@ -28,6 +28,8 @@ import { TodayColumn } from './TodayColumn';
 import { DoneColumn } from './DoneColumn';
 import { HistoryPanel } from './HistoryPanel';
 import { ShortcutHelp } from './ShortcutHelp';
+import { SyncSettings } from './SyncSettings';
+import { useGistSync, syncStatusLabel } from './useGistSync';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -71,9 +73,11 @@ export function App() {
   const addInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSync, setShowSync] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
   const [masterCollapsed, setMasterCollapsed] = useState(false);
+  const sync = useGistSync(state, setState);
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
@@ -212,6 +216,16 @@ export function App() {
                 >
                   Import
                 </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowSync(true);
+                  }}
+                >
+                  Sync…
+                </button>
               </div>
             )}
           </div>
@@ -222,6 +236,17 @@ export function App() {
             hidden
             onChange={handleImportFile}
           />
+          {(sync.connected || sync.status === 'error') && (
+            <button
+              type="button"
+              className="app__sync-indicator"
+              aria-label={`Sync status: ${syncStatusLabel(sync.status)}`}
+              title={`Sync: ${syncStatusLabel(sync.status)}`}
+              onClick={() => setShowSync(true)}
+            >
+              <span className={`sync-dot sync-dot--${sync.status}`} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             className="app__help"
@@ -266,6 +291,7 @@ export function App() {
       </main>
       <HistoryPanel history={state.history} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
+      {showSync && <SyncSettings sync={sync} onClose={() => setShowSync(false)} />}
     </div>
   );
 }
