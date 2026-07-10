@@ -96,11 +96,24 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
   const leavingRef = useRef(false);
   const leaveTimeout = useRef<number | null>(null);
 
+  // The non-passive touchmove listener currently attached for a live gesture
+  // (see attachTouch/detachTouch below), kept so it can always be removed.
+  const nativeTouch = useRef<{ el: HTMLElement; handler: (e: TouchEvent) => void } | null>(null);
+
+  const detachTouch = useCallback(() => {
+    const nt = nativeTouch.current;
+    if (nt) {
+      nt.el.removeEventListener('touchmove', nt.handler);
+      nativeTouch.current = null;
+    }
+  }, []);
+
   useEffect(
     () => () => {
       if (leaveTimeout.current !== null) window.clearTimeout(leaveTimeout.current);
+      detachTouch();
     },
-    [],
+    [detachTouch],
   );
 
   // Latest options behind a ref so the pointer handlers can stay stable
@@ -169,7 +182,35 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
     velocity.current.add(e.clientX, e.timeStamp);
     // Disable the CSS transition so drag frames track the finger exactly.
     if (fg) fg.style.transition = 'none';
-  }, []);
+
+    // Claim horizontal movement from the browser with a non-passive touchmove
+    // (plan §fix): `touch-action: pan-y` alone is not honoured by iOS Safari
+    // inside the horizontal scroll-snap pager, so without this the pager steals
+    // the gesture and fires pointercancel, springing the reveal shut. Vertical
+    // drags are left untouched so native list scrolling still works. Same
+    // technique the reorder hook uses; a separate listener per hook is fine.
+    if (fg) {
+      detachTouch();
+      const handler = (te: TouchEvent) => {
+        const gs = g.current;
+        if (!gs.active) return;
+        if (gs.axis === 'vertical') return;
+        if (gs.axis === 'horizontal') {
+          te.preventDefault();
+          return;
+        }
+        // Axis not yet locked: decide from this touch directly (touch/pointer
+        // event ordering differs across engines, so don't rely on onPointerMove).
+        const t = te.touches[0];
+        if (!t) return;
+        if (lockAxis(t.clientX - gs.startX, t.clientY - gs.startY) === 'horizontal') {
+          te.preventDefault();
+        }
+      };
+      fg.addEventListener('touchmove', handler, { passive: false });
+      nativeTouch.current = { el: fg, handler };
+    }
+  }, [detachTouch]);
 
   // Constrain the raw offset to the card's physics: free travel toward a valid
   // action, dampened resistance otherwise.
@@ -226,9 +267,10 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
   );
 
   const endGesture = useCallback(() => {
+    detachTouch();
     g.current = freshGesture();
     setPhase('idle');
-  }, []);
+  }, [detachTouch]);
 
   const onPointerUp = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -275,6 +317,7 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
           fg.style.transition = `transform ${LEAVE_MS}ms ease-out`;
           fg.style.transform = `translateX(${gs.width * LEAVE_TRAVEL}px)`;
         }
+        detachTouch();
         g.current = freshGesture();
         leavingRef.current = true;
         setPhase('leaving');
@@ -317,6 +360,9 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
       } catch {
         /* ignore */
       }
+      // The touchmove preventDefault above should stop iOS from cancelling a
+      // horizontal swipe; if a cancel still arrives, restingOffset() keeps an
+      // already-open reveal open (revealedId === cardId) rather than losing it.
       settle(restingOffset());
       endGesture();
     },
