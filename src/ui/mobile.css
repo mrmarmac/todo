@@ -1,0 +1,193 @@
+/* Mobile shell (Phase 1 of the mobile redesign, plan §Files). Entirely gated
+   behind the same breakpoint as the desktop stacking rules in styles.css, so
+   this file changes nothing at >= 900px. Colors reuse styles.css's existing
+   CSS custom properties (:root) so dark mode is automatic. */
+@media (max-width: 900px) {
+  /* Make the app a fixed-height flex column so the pager below the header can
+     claim "the rest of the viewport" via flex:1 rather than a hardcoded
+     height. Desktop's `.app` is untouched (no rule outside this query). */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app__header {
+    flex: 0 0 auto;
+  }
+
+  .m-board {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* let the pager child scroll instead of growing past the flex box */
+  }
+
+  /* Segmented control (Master / Today / Done). */
+  .m-segmented {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.25rem;
+    margin: 0 1rem 0.6rem;
+    padding: 0.25rem;
+    background: var(--pill-bg);
+    border-radius: 999px;
+  }
+
+  .m-segmented__btn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.45rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .m-segmented__btn--active {
+    background: var(--col-bg);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .m-done-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Thin day-progress bar under the segmented control. Hidden entirely (via
+     the component not rendering it) when there is nothing to show progress
+     on yet (dayProgress total === 0). */
+  .m-progress {
+    flex: 0 0 auto;
+    height: 3px;
+    margin: 0 1rem 0.75rem;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .m-progress__fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+
+  /* Scroll-snap pager: one full-width page per column, native swipe physics. */
+  .m-pager {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .m-pager::-webkit-scrollbar {
+    display: none;
+  }
+
+  .m-page {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    overflow-y: auto;
+    /* Extra bottom padding clears the quick-add FAB (bottom-right, ~3.25rem
+       across, see .quick-add-fab in styles.css) so the last card is never
+       hidden under it. */
+    padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  .m-page__heading {
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+  }
+
+  .m-page__placeholder {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* Static collapsed card (Phase 1: no expansion, no actions yet). */
+  .m-card-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .m-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0.75rem 0.85rem;
+    background: var(--col-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  /* Active item (SPEC §6.8): same accent left-bar treatment as .task--active. */
+  .m-card--active {
+    border-color: var(--accent);
+    background: var(--active-bg);
+    box-shadow: inset 3px 0 0 0 var(--accent), 0 0 0 2px var(--ring);
+  }
+
+  .m-card__main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .m-card__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.98rem;
+  }
+
+  /* Compact subtask completion chip ("2/5") with a micro progress bar. */
+  .m-progress-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .m-progress-chip__bar {
+    width: 2.5rem;
+    height: 3px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .m-progress-chip__fill {
+    height: 100%;
+    background: var(--accent);
+  }
+}
