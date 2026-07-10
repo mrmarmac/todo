@@ -1,0 +1,852 @@
+/* Mobile shell (Phase 1 of the mobile redesign, plan §Files). Entirely gated
+   behind the same breakpoint as the desktop stacking rules in styles.css, so
+   this file changes nothing at >= 900px. Colors reuse styles.css's existing
+   CSS custom properties (:root) so dark mode is automatic. */
+@media (max-width: 900px) {
+  /* Make the app a fixed-height flex column so the pager below the header can
+     claim "the rest of the viewport" via flex:1 rather than a hardcoded
+     height. Desktop's `.app` is untouched (no rule outside this query). */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app__header {
+    flex: 0 0 auto;
+  }
+
+  .m-board {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* let the pager child scroll instead of growing past the flex box */
+  }
+
+  /* Segmented control (Master / Today / Done). */
+  .m-segmented {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.25rem;
+    margin: 0 1rem 0.6rem;
+    padding: 0.25rem;
+    background: var(--pill-bg);
+    border-radius: 999px;
+  }
+
+  .m-segmented__btn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.45rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .m-segmented__btn--active {
+    background: var(--col-bg);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .m-done-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Thin day-progress bar under the segmented control. Hidden entirely (via
+     the component not rendering it) when there is nothing to show progress
+     on yet (dayProgress total === 0). */
+  .m-progress {
+    flex: 0 0 auto;
+    height: 3px;
+    margin: 0 1rem 0.75rem;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .m-progress__fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+
+  /* Scroll-snap pager: one full-width page per column, native swipe physics. */
+  .m-pager {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .m-pager::-webkit-scrollbar {
+    display: none;
+  }
+
+  .m-page {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    overflow-y: auto;
+    /* Extra bottom padding clears the quick-add FAB (bottom-right, ~3.25rem
+       across, see .quick-add-fab in styles.css) so the last card is never
+       hidden under it. */
+    padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  .m-page__heading {
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+  }
+
+  .m-page__placeholder {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* Accordion card list (Phase 2: collapsed look matches Phase 1 exactly; the
+     header stays a fixed-layout row/column pair so tapping to expand never
+     shifts the collapsed content — the expand region is a sibling below it). */
+  .m-card-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  /* The card is a positioning context whose overflow is clipped so the swipe
+     underlays (absolutely filling it) stay inside the rounded corners. The
+     visible surface lives in .m-card__fg, which is what translates under the
+     finger. */
+  .m-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--col-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    /* A long-press drag lives on this element (plan §4): suppress the iOS
+       text-callout and selection so a hold never starts a selection/menu. */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Foreground layer: the draggable card surface (plan §3). Opaque so it
+     covers the underlays at rest; `pan-y` keeps vertical scrolling native
+     while horizontal drags are captured in JS; text/callout selection is
+     suppressed so a swipe never starts a selection. */
+  .m-card__fg {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem;
+    background: var(--col-bg);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition: transform 0.2s ease;
+  }
+
+  /* Reserve room so the header's wrapped content never runs under the
+     overlaid ⋯ button (only rendered while expanded). */
+  .m-card--expanded .m-card__fg {
+    padding-right: 2.75rem;
+  }
+
+  /* Active item (SPEC §6.8): same accent left-bar treatment as .task--active. */
+  .m-card--active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  .m-card--active .m-card__fg {
+    background: var(--active-bg);
+    box-shadow: inset 3px 0 0 0 var(--accent);
+  }
+
+  .m-card--editing {
+    cursor: default;
+  }
+
+  .m-card__editbody {
+    padding: 0.75rem 0.85rem;
+  }
+
+  /* ── Long-press-drag reorder (plan §4) ─────────────────────────────────
+     The dragged card is lifted above its siblings and follows the finger via
+     a direct inline `transform` (translateY + scale, written by
+     useLongPressReorder). Any card-level transition is suppressed while the
+     inline transform is live so it tracks the finger exactly. */
+  .m-card--drag {
+    z-index: 5;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+    /* Let the elevated card show over its neighbours instead of being clipped
+       by the list's stacking; overflow stays hidden on the base rule. */
+    cursor: grabbing;
+  }
+
+  /* Insertion indicator: an accent line at the top of the card the drop would
+     land before (mirrors desktop `.task--insert-before`). */
+  .m-card--insert-before {
+    box-shadow: inset 0 2px 0 0 var(--accent);
+  }
+
+  /* End-of-list drop indicator, shown when the drop targets past the last
+     card (mirrors desktop `.task-list__end--active`). */
+  .m-list-end-indicator {
+    list-style: none;
+    height: 2px;
+    margin-top: -0.3rem;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__fg {
+      transition: none;
+    }
+  }
+
+  /* Swipe underlays, revealed as the foreground slides. Opacity is toggled
+     imperatively by useCardSwipe so only the relevant one shows per drag. */
+  .m-card__under {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    opacity: 0;
+  }
+
+  .m-card__under--complete {
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 1.35rem;
+    color: #fff;
+    font-size: 1.4rem;
+  }
+
+  .m-card__under--ok {
+    background: var(--sync-ok);
+  }
+
+  .m-card__under--accent {
+    background: var(--accent);
+  }
+
+  .m-card__under--actions {
+    justify-content: flex-end;
+  }
+
+  /* Left-reveal action buttons: 56px wide, ≥44px tall tap targets. */
+  .m-card__under-btn {
+    width: 56px;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border: none;
+    color: #fff;
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .m-card__under-btn .icon {
+    width: 1.15em;
+    height: 1.15em;
+  }
+
+  .m-card__under-btn--accent {
+    background: var(--accent);
+  }
+
+  .m-card__under-btn--danger {
+    background: var(--danger);
+  }
+
+  /* Whole collapsed card is the tap target: a `role="button"` div (not a real
+     <button>) because the expanded state nests the ⋯ button inside it, and
+     interactive content can't nest inside <button>. */
+  .m-card__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 44px;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+
+  .m-card__header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .m-card__main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .m-card__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.98rem;
+  }
+
+  /* Compact subtask completion chip ("2/5") with a micro progress bar. */
+  .m-progress-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .m-progress-chip__bar {
+    width: 2.5rem;
+    height: 3px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .m-progress-chip__fill {
+    height: 100%;
+    background: var(--accent);
+  }
+
+  /* ⋯ button, overlaid top-right of the card (only rendered while expanded —
+     .m-card--expanded reserves the padding for it above). */
+  .m-card__more {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .m-card__more:hover,
+  .m-card__more:focus-visible {
+    background: var(--pill-bg);
+    color: var(--text);
+  }
+
+  /* Accordion expand/collapse via the grid-template-rows 0fr → 1fr trick: no
+     JS height measurement, and it animates smoothly even though the content's
+     natural height is unknown ahead of time. `min-height: 0` on the inner
+     wrapper is required so the grid track can actually shrink to 0. */
+  .m-card__expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .m-card--expanded .m-card__expand {
+    grid-template-rows: 1fr;
+  }
+
+  .m-card__expand-inner {
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .m-card--expanded .m-card__expand-inner {
+    padding-top: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__expand {
+      transition: none;
+    }
+  }
+
+  /* Focus chip (Today cards only, SPEC §6.8): the tap-to-set-active toggle
+     that moved off the card title now that tapping the title expands. */
+  .m-focus-chip {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--col-bg);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .m-focus-chip--on {
+    border-color: var(--accent);
+    background: var(--active-bg);
+    color: var(--accent);
+  }
+
+  /* "+ Add subtask" affordance (non-Done columns): a plain row that swaps for
+     the existing .subtask-add form (see SubtaskList.tsx's AddSubtaskForm). */
+  .m-card__add-subtask {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.1rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* Subtask rows: big tap-to-toggle targets (plan §Files, SPEC §6.4/§6.8). */
+  .m-subtask-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .m-subtask {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .m-subtask__row {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.4rem 0.5rem;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  /* Master's rows are inert (ticking is Today-only, D18): no hover/pressed
+     affordance, default cursor. */
+  .m-subtask__row:not([role='button']) {
+    cursor: default;
+  }
+
+  .m-subtask__row[role='button']:hover,
+  .m-subtask__row[role='button']:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  /* Visual circle/checkmark indicator, not a tiny native checkbox. */
+  .m-subtask__check {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    color: #fff;
+  }
+
+  .m-subtask__check .icon {
+    width: 0.85em;
+    height: 0.85em;
+  }
+
+  .m-subtask--done .m-subtask__check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .m-subtask__title {
+    min-width: 0;
+    font-size: 0.92rem;
+  }
+
+  .m-subtask--done .m-subtask__title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .m-subtask--active .m-subtask__title {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .m-subtask__more {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .m-subtask__more:hover,
+  .m-subtask__more:focus-visible {
+    background: var(--pill-bg);
+    color: var(--text);
+  }
+
+  .m-subtask--editing {
+    padding: 0.3rem 0;
+  }
+
+  /* ── Action sheet (⋯ menus): fixed backdrop + sliding-up panel ─────────── */
+  .m-sheet__backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: flex-end;
+    /* Between the QuickAdd FAB (z-index: 60, styles.css) and ConfirmDialog
+       (z-index: 200, styles.css) so a confirm opened from a sheet item stacks
+       above it. */
+    z-index: 120;
+  }
+
+  .m-sheet {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    background: var(--col-bg);
+    border-radius: 16px 16px 0 0;
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
+    animation: m-sheet-slide-up 0.2s ease-out;
+  }
+
+  @keyframes m-sheet-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-sheet {
+      animation: none;
+    }
+  }
+
+  .m-sheet__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.65rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .m-sheet__item:hover,
+  .m-sheet__item:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  .m-sheet__item--danger {
+    color: var(--danger);
+  }
+
+  .m-sheet__item[disabled] {
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .m-sheet__hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .m-sheet__cancel {
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    font-weight: 600;
+    justify-content: center;
+  }
+
+  /* ── Undo toast (plan §4) ──────────────────────────────────────────────
+     A single bar above the QuickAdd FAB (z-index 60) but below the action
+     sheet / confirm dialog (120 / 200). */
+  .m-toast {
+    position: fixed;
+    left: calc(1rem + env(safe-area-inset-left));
+    right: calc(1rem + env(safe-area-inset-right));
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.5rem 0.6rem 1rem;
+    background: var(--col-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+    animation: m-toast-in 0.2s ease-out;
+  }
+
+  .m-toast__msg {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .m-toast__action {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.9rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .m-toast__action:hover,
+  .m-toast__action:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  @keyframes m-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-toast {
+      animation: none;
+    }
+  }
+
+  /* ── Completion exit animation (plan §5) ────────────────────────────────
+     Wraps every card's underlays + foreground so a completion commit can
+     collapse the whole `<li>` to zero height via the grid-rows 1fr→0fr trick
+     (mirrors `.m-card__expand`) while the foreground keeps sliding off-screen
+     under `useCardSwipe`'s own transition. `.m-card__leave-inner` takes over
+     as the underlays' positioned/clipping ancestor (instead of the `<li>`) so
+     they still fill and get clipped correctly as the row shrinks. */
+  .m-card__leave {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease-in;
+  }
+
+  .m-card--leaving .m-card__leave {
+    grid-template-rows: 0fr;
+  }
+
+  .m-card__leave-inner {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Nothing in a leaving card should be tappable — it's on its way out. */
+  .m-card--leaving .m-card__fg {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__leave {
+      transition: none;
+    }
+  }
+
+  /* ── "Done today (n)" disclosure (plan §5) ──────────────────────────────
+     A collapsed-by-default summary at the bottom of the Today page: the same
+     tasks the Done page lists, as muted, inert mini-rows (no gestures, no
+     expansion) plus a small "Back to Today" affordance. */
+  .m-done-today {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.25rem;
+  }
+
+  .m-done-today__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.4rem 0.25rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .m-done-today__header:hover,
+  .m-done-today__header:focus-visible {
+    color: var(--text);
+  }
+
+  .m-done-today__label {
+    flex: 1 1 auto;
+  }
+
+  .m-done-today__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--pill-bg);
+    color: var(--text);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .m-done-today__list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .m-done-today__row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.15rem 0.15rem 0.15rem 0.6rem;
+  }
+
+  .m-done-today__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    text-decoration: line-through;
+    font-size: 0.88rem;
+  }
+
+  .m-done-today__back {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .m-done-today__back:hover,
+  .m-done-today__back:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  /* Generic brief scale-pulse, re-triggered by remounting the element under a
+     new `key` (see MobileTodayPage's done-count badge). */
+  @keyframes m-pulse {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.3);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .m-pulse {
+    animation: m-pulse 320ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-pulse {
+      animation: none;
+    }
+  }
+}
