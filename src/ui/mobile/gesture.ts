@@ -91,3 +91,32 @@ export class VelocityTracker {
     return (last.x - first.x) / dt;
   }
 }
+
+/**
+ * The insertion slot (0..N) a vertical reorder drag points at, from the finger's
+ * `clientY` against the cached rects of the N cards (list order, viewport
+ * coords). Vertical analogue of desktop `TodayColumn.slotForCard`: a pointer
+ * above a card's vertical midpoint inserts before it (slot = i); at or below the
+ * midpoint of the last card, after all of them (slot = N). An empty list yields
+ * slot 0. `rects` must be in list order.
+ */
+export function slotForPointerY(
+  clientY: number,
+  rects: Array<{ top: number; height: number }>,
+): number {
+  for (let i = 0; i < rects.length; i++) {
+    if (clientY < rects[i].top + rects[i].height / 2) return i;
+  }
+  return rects.length;
+}
+
+/**
+ * Translate a full-list insertion slot (0..N) into the index `reorderToday`
+ * expects — the position *after* the dragged card at `from` is spliced out, so a
+ * slot past its own position shifts down by one. Identical splice math to
+ * desktop `TodayColumn.handleDrop` (`slot > from ? slot - 1 : slot`), extracted
+ * here so the mobile long-press reorder shares one tested rule.
+ */
+export function reorderTargetIndex(slot: number, from: number): number {
+  return slot > from ? slot - 1 : slot;
+}

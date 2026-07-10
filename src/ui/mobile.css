@@ -149,6 +149,11 @@
     background: var(--col-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
+    /* A long-press drag lives on this element (plan §4): suppress the iOS
+       text-callout and selection so a hold never starts a selection/menu. */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
   /* Foreground layer: the draggable card surface (plan §3). Opaque so it
@@ -193,6 +198,35 @@
 
   .m-card__editbody {
     padding: 0.75rem 0.85rem;
+  }
+
+  /* ── Long-press-drag reorder (plan §4) ─────────────────────────────────
+     The dragged card is lifted above its siblings and follows the finger via
+     a direct inline `transform` (translateY + scale, written by
+     useLongPressReorder). Any card-level transition is suppressed while the
+     inline transform is live so it tracks the finger exactly. */
+  .m-card--drag {
+    z-index: 5;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+    /* Let the elevated card show over its neighbours instead of being clipped
+       by the list's stacking; overflow stays hidden on the base rule. */
+    cursor: grabbing;
+  }
+
+  /* Insertion indicator: an accent line at the top of the card the drop would
+     land before (mirrors desktop `.task--insert-before`). */
+  .m-card--insert-before {
+    box-shadow: inset 0 2px 0 0 var(--accent);
+  }
+
+  /* End-of-list drop indicator, shown when the drop targets past the last
+     card (mirrors desktop `.task-list__end--active`). */
+  .m-list-end-indicator {
+    list-style: none;
+    height: 2px;
+    margin-top: -0.3rem;
+    background: var(--accent);
+    border-radius: 999px;
   }
 
   @media (prefers-reduced-motion: reduce) {

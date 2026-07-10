@@ -173,6 +173,10 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const gs = g.current;
       if (!gs.active || e.pointerId !== gs.pointerId) return;
+      // Disabled mid-gesture (long-press reorder just armed on this card): stop
+      // advancing so a swipe can never fight the drag. The gesture still ends
+      // cleanly on pointerup below.
+      if (optsRef.current.disabled) return;
 
       const dx = e.clientX - gs.startX;
       const dy = e.clientY - gs.startY;
