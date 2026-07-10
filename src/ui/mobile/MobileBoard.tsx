@@ -30,6 +30,17 @@ const HOME_INDEX = 1;
 export function MobileBoard({ state, today, apply, confirm }: Props) {
   const pagerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(HOME_INDEX);
+  // Accordion: exactly one card expanded at a time across all three pages.
+  // Editing is nested under expansion (you can only edit an expanded card),
+  // so switching/collapsing the expanded card always cancels any in-progress
+  // edit rather than leaving stale edit state to resurface later.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function toggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+    setEditingId(null);
+  }
   // Mirrors activeIndex for the resize handler below, which is registered
   // once and must not re-run on every page change just to read a fresh value.
   const activeIndexRef = useRef(activeIndex);
@@ -116,10 +127,30 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
       )}
       <div className="m-pager" ref={pagerRef}>
         <div className="m-page">
-          <MobileMasterPage tasks={state.tasks} today={today} apply={apply} confirm={confirm} />
+          <MobileMasterPage
+            tasks={state.tasks}
+            today={today}
+            apply={apply}
+            confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
+          />
         </div>
         <div className="m-page">
-          <MobileTodayPage tasks={state.tasks} today={today} apply={apply} confirm={confirm} />
+          <MobileTodayPage
+            tasks={state.tasks}
+            today={today}
+            apply={apply}
+            confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
+          />
         </div>
         <div className="m-page">
           <MobileDonePage
@@ -128,6 +159,11 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
             history={state.history}
             apply={apply}
             confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
           />
         </div>
       </div>

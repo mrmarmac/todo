@@ -127,7 +127,9 @@
     font-size: 0.9rem;
   }
 
-  /* Static collapsed card (Phase 1: no expansion, no actions yet). */
+  /* Accordion card list (Phase 2: collapsed look matches Phase 1 exactly; the
+     header stays a fixed-layout row/column pair so tapping to expand never
+     shifts the collapsed content — the expand region is a sibling below it). */
   .m-card-list {
     list-style: none;
     margin: 0;
@@ -138,15 +140,20 @@
   }
 
   .m-card {
+    position: relative; /* anchors .m-card__more */
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    min-height: 44px;
-    justify-content: center;
     padding: 0.75rem 0.85rem;
     background: var(--col-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
+  }
+
+  /* Reserve room so the header's wrapped content never runs under the
+     overlaid ⋯ button (only rendered while expanded). */
+  .m-card--expanded {
+    padding-right: 2.75rem;
   }
 
   /* Active item (SPEC §6.8): same accent left-bar treatment as .task--active. */
@@ -154,6 +161,28 @@
     border-color: var(--accent);
     background: var(--active-bg);
     box-shadow: inset 3px 0 0 0 var(--accent), 0 0 0 2px var(--ring);
+  }
+
+  .m-card--editing {
+    cursor: default;
+  }
+
+  /* Whole collapsed card is the tap target: a `role="button"` div (not a real
+     <button>) because the expanded state nests the ⋯ button inside it, and
+     interactive content can't nest inside <button>. */
+  .m-card__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 44px;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+
+  .m-card__header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .m-card__main {
@@ -189,5 +218,288 @@
   .m-progress-chip__fill {
     height: 100%;
     background: var(--accent);
+  }
+
+  /* ⋯ button, overlaid top-right of the card (only rendered while expanded —
+     .m-card--expanded reserves the padding for it above). */
+  .m-card__more {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .m-card__more:hover,
+  .m-card__more:focus-visible {
+    background: var(--pill-bg);
+    color: var(--text);
+  }
+
+  /* Accordion expand/collapse via the grid-template-rows 0fr → 1fr trick: no
+     JS height measurement, and it animates smoothly even though the content's
+     natural height is unknown ahead of time. `min-height: 0` on the inner
+     wrapper is required so the grid track can actually shrink to 0. */
+  .m-card__expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .m-card--expanded .m-card__expand {
+    grid-template-rows: 1fr;
+  }
+
+  .m-card__expand-inner {
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .m-card--expanded .m-card__expand-inner {
+    padding-top: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__expand {
+      transition: none;
+    }
+  }
+
+  /* Focus chip (Today cards only, SPEC §6.8): the tap-to-set-active toggle
+     that moved off the card title now that tapping the title expands. */
+  .m-focus-chip {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--col-bg);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .m-focus-chip--on {
+    border-color: var(--accent);
+    background: var(--active-bg);
+    color: var(--accent);
+  }
+
+  /* "+ Add subtask" affordance (non-Done columns): a plain row that swaps for
+     the existing .subtask-add form (see SubtaskList.tsx's AddSubtaskForm). */
+  .m-card__add-subtask {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.1rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* Subtask rows: big tap-to-toggle targets (plan §Files, SPEC §6.4/§6.8). */
+  .m-subtask-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .m-subtask {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .m-subtask__row {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.4rem 0.5rem;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  /* Master's rows are inert (ticking is Today-only, D18): no hover/pressed
+     affordance, default cursor. */
+  .m-subtask__row:not([role='button']) {
+    cursor: default;
+  }
+
+  .m-subtask__row[role='button']:hover,
+  .m-subtask__row[role='button']:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  /* Visual circle/checkmark indicator, not a tiny native checkbox. */
+  .m-subtask__check {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    color: #fff;
+  }
+
+  .m-subtask__check .icon {
+    width: 0.85em;
+    height: 0.85em;
+  }
+
+  .m-subtask--done .m-subtask__check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .m-subtask__title {
+    min-width: 0;
+    font-size: 0.92rem;
+  }
+
+  .m-subtask--done .m-subtask__title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .m-subtask--active .m-subtask__title {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .m-subtask__more {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .m-subtask__more:hover,
+  .m-subtask__more:focus-visible {
+    background: var(--pill-bg);
+    color: var(--text);
+  }
+
+  .m-subtask--editing {
+    padding: 0.3rem 0;
+  }
+
+  /* ── Action sheet (⋯ menus): fixed backdrop + sliding-up panel ─────────── */
+  .m-sheet__backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: flex-end;
+    /* Between the QuickAdd FAB (z-index: 60, styles.css) and ConfirmDialog
+       (z-index: 200, styles.css) so a confirm opened from a sheet item stacks
+       above it. */
+    z-index: 120;
+  }
+
+  .m-sheet {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    background: var(--col-bg);
+    border-radius: 16px 16px 0 0;
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
+    animation: m-sheet-slide-up 0.2s ease-out;
+  }
+
+  @keyframes m-sheet-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-sheet {
+      animation: none;
+    }
+  }
+
+  .m-sheet__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.65rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .m-sheet__item:hover,
+  .m-sheet__item:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  .m-sheet__item--danger {
+    color: var(--danger);
+  }
+
+  .m-sheet__item[disabled] {
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .m-sheet__hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .m-sheet__cancel {
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    font-weight: 600;
+    justify-content: center;
   }
 }
