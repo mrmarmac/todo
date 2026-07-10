@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { lockAxis, shouldCommitSwipe, dampen, VelocityTracker, SLOP } from '../gesture';
+import {
+  lockAxis,
+  shouldCommitSwipe,
+  dampen,
+  VelocityTracker,
+  SLOP,
+  slotForPointerY,
+  reorderTargetIndex,
+} from '../gesture';
 
 describe('lockAxis', () => {
   it('stays null while both deltas are under the slop', () => {
@@ -114,5 +122,60 @@ describe('VelocityTracker', () => {
     v.add(10, 10);
     v.reset();
     expect(v.velocity()).toBe(0);
+  });
+});
+
+describe('slotForPointerY', () => {
+  // Three stacked 100px cards at y = 0, 100, 200 (midpoints 50, 150, 250).
+  const rects = [
+    { top: 0, height: 100 },
+    { top: 100, height: 100 },
+    { top: 200, height: 100 },
+  ];
+
+  it('inserts before the first card when the pointer is above everything', () => {
+    expect(slotForPointerY(-20, rects)).toBe(0);
+    expect(slotForPointerY(0, rects)).toBe(0);
+    expect(slotForPointerY(49, rects)).toBe(0);
+  });
+
+  it('treats exactly the midpoint as below it (insert after)', () => {
+    // clientY < mid is strict, so the midpoint itself falls to the next card.
+    expect(slotForPointerY(50, rects)).toBe(1);
+    expect(slotForPointerY(150, rects)).toBe(2);
+    expect(slotForPointerY(250, rects)).toBe(3);
+  });
+
+  it('inserts between cards from the midpoint rule', () => {
+    expect(slotForPointerY(51, rects)).toBe(1);
+    expect(slotForPointerY(149, rects)).toBe(1);
+    expect(slotForPointerY(151, rects)).toBe(2);
+  });
+
+  it('inserts after the last card when the pointer is below everything', () => {
+    expect(slotForPointerY(260, rects)).toBe(3);
+    expect(slotForPointerY(9999, rects)).toBe(3);
+  });
+
+  it('returns slot 0 for an empty list', () => {
+    expect(slotForPointerY(123, [])).toBe(0);
+  });
+});
+
+describe('reorderTargetIndex', () => {
+  it('shifts a slot past the dragged card down by one', () => {
+    // Dragged from index 1; dropping at slot 3 (after the 3rd card) targets 2.
+    expect(reorderTargetIndex(3, 1)).toBe(2);
+  });
+
+  it('leaves a slot at or before the dragged card unchanged', () => {
+    expect(reorderTargetIndex(0, 2)).toBe(0);
+    expect(reorderTargetIndex(2, 2)).toBe(2); // slot === from: no shift
+  });
+
+  it('maps both of the dragged card own-position slots to a no-op index', () => {
+    // A card at `from` occupies slots {from, from+1}; both must resolve to `from`.
+    expect(reorderTargetIndex(2, 2)).toBe(2);
+    expect(reorderTargetIndex(3, 2)).toBe(2);
   });
 });

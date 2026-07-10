@@ -26,6 +26,7 @@ import { Icon, type IconName } from '../Icon';
 import { MobileSubtasks } from './MobileSubtasks';
 import { ActionSheet, type ActionSheetItem } from './ActionSheet';
 import { useCardSwipe } from './useCardSwipe';
+import type { ReorderBinding } from './useLongPressReorder';
 import type { ToastState } from './Toast';
 
 type ConfirmFn = UseConfirmResult['confirm'];
@@ -52,6 +53,8 @@ interface Props {
   showToast: (toast: ToastState) => void;
   /** This card's position in the Today order — captured for complete-undo. */
   todayIndex?: number;
+  /** Long-press-drag reorder wiring (Today collapsed cards only, plan §4). */
+  reorder?: ReorderBinding;
 }
 
 /** Compact "n/m" subtask completion chip with a micro progress bar; `null` when there are no subtasks. */
@@ -95,6 +98,7 @@ export function MobileTaskCard({
   onReveal,
   showToast,
   todayIndex,
+  reorder,
 }: Props) {
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -243,7 +247,9 @@ export function MobileTaskCard({
         : { icon: 'rotate-ccw', tone: 'accent' };
 
   const swipe = useCardSwipe({
-    disabled: editing,
+    // Disabled while editing, and while this card is being drag-reordered so the
+    // swipe machine can't fight the long-press drag (plan §4 coexistence).
+    disabled: editing || !!reorder?.dragging,
     onCommitRight,
     rightBlocked,
     onBlockedHint: () => showToast({ message: 'Finish subtasks first' }),
@@ -258,7 +264,8 @@ export function MobileTaskCard({
     'm-card' +
     (expanded ? ' m-card--expanded' : '') +
     (task.isActive ? ' m-card--active' : '') +
-    (editing ? ' m-card--editing' : '');
+    (editing ? ' m-card--editing' : '') +
+    (reorder?.className ?? '');
 
   if (editing) {
     return (
@@ -310,11 +317,29 @@ export function MobileTaskCard({
       <div
         className="m-card__fg"
         ref={swipe.fgRef}
-        onPointerDown={swipe.handlers.onPointerDown}
-        onPointerMove={swipe.handlers.onPointerMove}
-        onPointerUp={swipe.handlers.onPointerUp}
-        onPointerCancel={swipe.handlers.onPointerCancel}
-        onClickCapture={swipe.onClickCapture}
+        // Swipe and long-press reorder share this surface (plan §4): both see
+        // each pointer event; the movement thresholds decide which one wins.
+        onPointerDown={(e) => {
+          swipe.handlers.onPointerDown(e);
+          reorder?.handlers.onPointerDown(e);
+        }}
+        onPointerMove={(e) => {
+          swipe.handlers.onPointerMove(e);
+          reorder?.handlers.onPointerMove(e);
+        }}
+        onPointerUp={(e) => {
+          swipe.handlers.onPointerUp(e);
+          reorder?.handlers.onPointerUp(e);
+        }}
+        onPointerCancel={(e) => {
+          swipe.handlers.onPointerCancel(e);
+          reorder?.handlers.onPointerCancel(e);
+        }}
+        onContextMenu={reorder?.handlers.onContextMenu}
+        onClickCapture={(e) => {
+          reorder?.onClickCapture(e);
+          if (!e.isPropagationStopped()) swipe.onClickCapture(e);
+        }}
       >
         <div
           className="m-card__header"
