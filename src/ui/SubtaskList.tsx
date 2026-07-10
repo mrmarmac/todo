@@ -180,7 +180,7 @@ function SubtaskRow({
  * current `subtask` — avoids the stale-seeding bug (C11) that a
  * useState(subtask.title) set up once at row-mount time would have.
  */
-function SubtaskEditForm({
+export function SubtaskEditForm({
   subtask,
   onSave,
   onCancel,
@@ -214,7 +214,7 @@ function SubtaskEditForm({
   );
 }
 
-function AddSubtaskForm({
+export function AddSubtaskForm({
   taskId,
   onAddSubtask,
   onClose,

@@ -1,0 +1,210 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { AppState } from '../../core/types';
+import { dayProgress } from '../../core/progress';
+import type { UseConfirmResult } from '../ConfirmDialog';
+import { MobileMasterPage } from './MobileMasterPage';
+import { MobileTodayPage } from './MobileTodayPage';
+import { MobileDonePage } from './MobileDonePage';
+import { Toast, type ToastState } from './Toast';
+
+type ConfirmFn = UseConfirmResult['confirm'];
+
+interface Props {
+  state: AppState;
+  today: string;
+  apply: (fn: (s: AppState) => AppState) => void;
+  confirm: ConfirmFn;
+}
+
+/** Segment order == pager page order (Master, Today, Done). Today is home (index 1). */
+const SEGMENTS = ['Master', 'Today', 'Done'] as const;
+const HOME_INDEX = 1;
+
+/**
+ * Mobile shell (< 900px): segmented control + day-progress bar above a
+ * horizontal scroll-snap pager holding the three column pages. Tracks which
+ * page is centered via a scroll listener (rAF-throttled) so the segmented
+ * control's highlight follows manual swipes, and re-snaps instantly on
+ * resize (e.g. orientation change) so a partial scroll position never gets
+ * stranded between two pages.
+ */
+export function MobileBoard({ state, today, apply, confirm }: Props) {
+  const pagerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(HOME_INDEX);
+  // Accordion: exactly one card expanded at a time across all three pages.
+  // Editing is nested under expansion (you can only edit an expanded card),
+  // so switching/collapsing the expanded card always cancels any in-progress
+  // edit rather than leaving stale edit state to resurface later.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Exactly one card may have its swipe-left action layer revealed at a time
+  // (plan §3): opening one, or starting a gesture on another, closes it.
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  // Undo toast (plan §4): a new toast replaces the old; 5s auto-dismiss with
+  // the timer reset on every replacement (the effect below re-runs per toast).
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const showToast = useCallback((next: ToastState) => setToast(next), []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  function toggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+    setEditingId(null);
+  }
+  // Mirrors activeIndex for the resize handler below, which is registered
+  // once and must not re-run on every page change just to read a fresh value.
+  const activeIndexRef = useRef(activeIndex);
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  // Land on Today by default. Instant (no smooth scroll) — this is initial
+  // placement, not a user-driven page change.
+  useLayoutEffect(() => {
+    const pager = pagerRef.current;
+    if (!pager) return;
+    pager.scrollTo({ left: pager.clientWidth * HOME_INDEX });
+  }, []);
+
+  // Track the centered page as the user swipes. rAF-throttled: 'scroll' can
+  // fire far faster than a render is useful for, and 'scrollend' isn't
+  // supported everywhere (notably Safari, until recently).
+  useEffect(() => {
+    const pager = pagerRef.current;
+    if (!pager) return;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const width = pager.clientWidth;
+        if (width === 0) return;
+        const idx = Math.round(pager.scrollLeft / width);
+        setActiveIndex((prev) => (prev === idx ? prev : idx));
+      });
+    };
+    pager.addEventListener('scroll', onScroll, { passive: true });
+    return () => pager.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // A viewport resize can leave the pager mid-page (its width, and therefore
+  // the pixel offset of each page boundary, just changed) — snap back to
+  // whichever page was active, instantly.
+  useEffect(() => {
+    const onResize = () => {
+      const pager = pagerRef.current;
+      if (!pager) return;
+      pager.scrollTo({ left: pager.clientWidth * activeIndexRef.current });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  function goToPage(i: number) {
+    setActiveIndex(i);
+    const pager = pagerRef.current;
+    if (!pager) return;
+    pager.scrollTo({ left: pager.clientWidth * i, behavior: 'smooth' });
+  }
+
+  const doneCount = state.tasks.filter((t) => t.column === 'done').length;
+  const progress = dayProgress(state);
+  const progressPct = progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100);
+
+  return (
+    <div className="m-board">
+      <div className="m-segmented" role="group" aria-label="Board section">
+        {SEGMENTS.map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            className={'m-segmented__btn' + (activeIndex === i ? ' m-segmented__btn--active' : '')}
+            aria-pressed={activeIndex === i}
+            onClick={() => goToPage(i)}
+          >
+            {label}
+            {label === 'Done' && doneCount > 0 && (
+              <span className="m-done-badge">{doneCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {progress.total > 0 && (
+        <div className="m-progress">
+          <div className="m-progress__fill" style={{ width: `${progressPct}%` }} />
+        </div>
+      )}
+      <div className="m-pager" ref={pagerRef}>
+        <div className="m-page">
+          <MobileMasterPage
+            tasks={state.tasks}
+            today={today}
+            apply={apply}
+            confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
+          />
+        </div>
+        <div className="m-page">
+          <MobileTodayPage
+            tasks={state.tasks}
+            today={today}
+            apply={apply}
+            confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
+          />
+        </div>
+        <div className="m-page">
+          <MobileDonePage
+            tasks={state.tasks}
+            today={today}
+            history={state.history}
+            apply={apply}
+            confirm={confirm}
+            expandedId={expandedId}
+            editingId={editingId}
+            onToggleExpand={toggleExpand}
+            onStartEdit={setEditingId}
+            onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
+          />
+        </div>
+      </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          actionLabel={toast.actionLabel}
+          onAction={
+            toast.onAction
+              ? () => {
+                  toast.onAction?.();
+                  setToast(null);
+                }
+              : undefined
+          }
+        />
+      )}
+    </div>
+  );
+}

@@ -33,6 +33,8 @@ import { SyncSettings } from './SyncSettings';
 import { QuickAdd } from './QuickAdd';
 import { useGistSync, syncStatusLabel } from './useGistSync';
 import { useConfirm } from './ConfirmDialog';
+import { useMediaQuery } from './useMediaQuery';
+import { MobileBoard } from './mobile/MobileBoard';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -82,6 +84,9 @@ export function App() {
   const [masterCollapsed, setMasterCollapsed] = useState(false);
   const { confirm, dialog } = useConfirm();
   const sync = useGistSync(state, setState, confirm);
+  // Matches the CSS breakpoint that stacks the board (styles.css); below it
+  // the mobile shell (pager + segmented control) replaces the desktop grid.
+  const isMobile = useMediaQuery('(max-width: 900px)');
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
@@ -285,38 +290,42 @@ export function App() {
           </button>
         </div>
       </header>
-      <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
-        <MasterColumn
-          tasks={state.tasks}
-          today={today}
-          addInputRef={addInputRef}
-          collapsed={masterCollapsed}
-          onToggleCollapse={() => setMasterCollapsed((v) => !v)}
-          onCreate={handleCreateTask}
-          onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
-          onDelete={(id) => setState((s) => deleteTask(s, id))}
-          onAddToday={(id) => setState((s) => moveToToday(s, id))}
-          subtaskHandlers={subtaskHandlers}
-        />
-        <TodayColumn
-          tasks={state.tasks}
-          today={today}
-          onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
-          onRemove={(id) => setState((s) => removeFromToday(s, id))}
-          onComplete={(id) => setState((s) => completeTask(s, id))}
-          onSetActive={(id) => setState((s) => setActive(s, id))}
-          onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
-          onDelete={(id) => setState((s) => deleteTask(s, id))}
-          subtaskHandlers={subtaskHandlers}
-        />
-        <DoneColumn
-          tasks={state.tasks}
-          today={today}
-          onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
-          onClear={() => setState((s) => clearDone(s, new Date()))}
-        />
-      </main>
-      <HistoryPanel history={state.history} />
+      {isMobile ? (
+        <MobileBoard state={state} today={today} apply={setState} confirm={confirm} />
+      ) : (
+        <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
+          <MasterColumn
+            tasks={state.tasks}
+            today={today}
+            addInputRef={addInputRef}
+            collapsed={masterCollapsed}
+            onToggleCollapse={() => setMasterCollapsed((v) => !v)}
+            onCreate={handleCreateTask}
+            onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
+            onDelete={(id) => setState((s) => deleteTask(s, id))}
+            onAddToday={(id) => setState((s) => moveToToday(s, id))}
+            subtaskHandlers={subtaskHandlers}
+          />
+          <TodayColumn
+            tasks={state.tasks}
+            today={today}
+            onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
+            onRemove={(id) => setState((s) => removeFromToday(s, id))}
+            onComplete={(id) => setState((s) => completeTask(s, id))}
+            onSetActive={(id) => setState((s) => setActive(s, id))}
+            onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
+            onDelete={(id) => setState((s) => deleteTask(s, id))}
+            subtaskHandlers={subtaskHandlers}
+          />
+          <DoneColumn
+            tasks={state.tasks}
+            today={today}
+            onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
+            onClear={() => setState((s) => clearDone(s, new Date()))}
+          />
+        </main>
+      )}
+      {!isMobile && <HistoryPanel history={state.history} />}
       <QuickAdd onCreate={handleCreateTask} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
