@@ -265,6 +265,7 @@ export function MobileTaskCard({
     (expanded ? ' m-card--expanded' : '') +
     (task.isActive ? ' m-card--active' : '') +
     (editing ? ' m-card--editing' : '') +
+    (swipe.phase === 'leaving' ? ' m-card--leaving' : '') +
     (reorder?.className ?? '');
 
   if (editing) {
@@ -287,133 +288,142 @@ export function MobileTaskCard({
 
   return (
     <li className={cardClass}>
-      {/* Right-commit underlay, revealed as the foreground slides right. */}
-      <div
-        className={`m-card__under m-card__under--complete m-card__under--${rightUnder.tone}`}
-        ref={swipe.underCompleteRef}
-        aria-hidden="true"
-      >
-        <Icon name={rightUnder.icon} />
-      </div>
-      {/* Left-reveal action layer, exposed as the foreground slides left. */}
-      {hasLeftActions && (
-        <div className="m-card__under m-card__under--actions" ref={swipe.underActionsRef}>
-          {revealActions.map((a) => (
-            <button
-              key={a.key}
-              type="button"
-              className={`m-card__under-btn m-card__under-btn--${a.tone}`}
-              onClick={() => {
-                onReveal(null);
-                a.onSelect();
-              }}
-            >
-              <Icon name={a.icon} />
-              <span>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div
-        className="m-card__fg"
-        ref={swipe.fgRef}
-        // Swipe and long-press reorder share this surface (plan §4): both see
-        // each pointer event; the movement thresholds decide which one wins.
-        onPointerDown={(e) => {
-          swipe.handlers.onPointerDown(e);
-          reorder?.handlers.onPointerDown(e);
-        }}
-        onPointerMove={(e) => {
-          swipe.handlers.onPointerMove(e);
-          reorder?.handlers.onPointerMove(e);
-        }}
-        onPointerUp={(e) => {
-          swipe.handlers.onPointerUp(e);
-          reorder?.handlers.onPointerUp(e);
-        }}
-        onPointerCancel={(e) => {
-          swipe.handlers.onPointerCancel(e);
-          reorder?.handlers.onPointerCancel(e);
-        }}
-        onContextMenu={reorder?.handlers.onContextMenu}
-        onClickCapture={(e) => {
-          reorder?.onClickCapture(e);
-          if (!e.isPropagationStopped()) swipe.onClickCapture(e);
-        }}
-      >
-        <div
-          className="m-card__header"
-          role="button"
-          tabIndex={0}
-          aria-expanded={expanded}
-          onClick={onToggleExpand}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onToggleExpand();
-            }
-          }}
-        >
-          <div className="m-card__main">
-            <TaskTitle title={task.title} className="m-card__title" />
-            {column === 'master' && task.isRecurring && (
-              <span className="badge badge--recurring">recurring</span>
-            )}
-            {column !== 'master' && task.sourceTaskId && (
-              <span className="badge badge--copy">recurring</span>
-            )}
-            {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
+      {/* Completion exit wrapper (plan §5): grid-rows 1fr→0fr collapses the
+          whole card's height in lockstep with the foreground's off-screen
+          translate, driven by `.m-card--leaving` above. `.m-card__leave-inner`
+          takes over as the underlays' positioning/clipping context (instead of
+          this `<li>`) so they still fill and clip correctly as it shrinks. */}
+      <div className="m-card__leave">
+        <div className="m-card__leave-inner">
+          {/* Right-commit underlay, revealed as the foreground slides right. */}
+          <div
+            className={`m-card__under m-card__under--complete m-card__under--${rightUnder.tone}`}
+            ref={swipe.underCompleteRef}
+            aria-hidden="true"
+          >
+            <Icon name={rightUnder.icon} />
           </div>
-          <SubtaskProgressChip task={task} />
-          {expanded && (
-            <button
-              type="button"
-              className="m-card__more"
-              aria-label="More actions"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSheetOpen(true);
-              }}
-            >
-              <Icon name="dots" />
-            </button>
-          )}
-        </div>
-        <div className="m-card__expand">
-          <div className="m-card__expand-inner">
-            {column === 'today' && (
-              <button
-                type="button"
-                className={'m-focus-chip' + (task.isActive ? ' m-focus-chip--on' : '')}
-                aria-pressed={task.isActive}
-                onClick={() => apply((s) => setActive(s, task.id))}
-              >
-                <Icon name="star" />
-                {task.isActive ? 'Focusing' : 'Focus'}
-              </button>
-            )}
-            <MobileSubtasks
-              task={task}
-              interactive={column === 'today'}
-              readOnly={column === 'done'}
-              {...subtaskHandlers}
-            />
-            {column !== 'done' &&
-              (addingSubtask ? (
-                <AddSubtaskForm
-                  taskId={task.id}
-                  onAddSubtask={subtaskHandlers.onAddSubtask}
-                  onClose={() => setAddingSubtask(false)}
-                />
-              ) : (
+          {/* Left-reveal action layer, exposed as the foreground slides left. */}
+          {hasLeftActions && (
+            <div className="m-card__under m-card__under--actions" ref={swipe.underActionsRef}>
+              {revealActions.map((a) => (
                 <button
+                  key={a.key}
                   type="button"
-                  className="m-card__add-subtask"
-                  onClick={() => setAddingSubtask(true)}
+                  className={`m-card__under-btn m-card__under-btn--${a.tone}`}
+                  onClick={() => {
+                    onReveal(null);
+                    a.onSelect();
+                  }}
                 >
-                  <Icon name="plus" /> Add subtask
+                  <Icon name={a.icon} />
+                  <span>{a.label}</span>
                 </button>
               ))}
+            </div>
+          )}
+          <div
+            className="m-card__fg"
+            ref={swipe.fgRef}
+            // Swipe and long-press reorder share this surface (plan §4): both see
+            // each pointer event; the movement thresholds decide which one wins.
+            onPointerDown={(e) => {
+              swipe.handlers.onPointerDown(e);
+              reorder?.handlers.onPointerDown(e);
+            }}
+            onPointerMove={(e) => {
+              swipe.handlers.onPointerMove(e);
+              reorder?.handlers.onPointerMove(e);
+            }}
+            onPointerUp={(e) => {
+              swipe.handlers.onPointerUp(e);
+              reorder?.handlers.onPointerUp(e);
+            }}
+            onPointerCancel={(e) => {
+              swipe.handlers.onPointerCancel(e);
+              reorder?.handlers.onPointerCancel(e);
+            }}
+            onContextMenu={reorder?.handlers.onContextMenu}
+            onClickCapture={(e) => {
+              reorder?.onClickCapture(e);
+              if (!e.isPropagationStopped()) swipe.onClickCapture(e);
+            }}
+          >
+            <div
+              className="m-card__header"
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded}
+              onClick={onToggleExpand}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onToggleExpand();
+                }
+              }}
+            >
+              <div className="m-card__main">
+                <TaskTitle title={task.title} className="m-card__title" />
+                {column === 'master' && task.isRecurring && (
+                  <span className="badge badge--recurring">recurring</span>
+                )}
+                {column !== 'master' && task.sourceTaskId && (
+                  <span className="badge badge--copy">recurring</span>
+                )}
+                {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
+              </div>
+              <SubtaskProgressChip task={task} />
+              {expanded && (
+                <button
+                  type="button"
+                  className="m-card__more"
+                  aria-label="More actions"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSheetOpen(true);
+                  }}
+                >
+                  <Icon name="dots" />
+                </button>
+              )}
+            </div>
+            <div className="m-card__expand">
+              <div className="m-card__expand-inner">
+                {column === 'today' && (
+                  <button
+                    type="button"
+                    className={'m-focus-chip' + (task.isActive ? ' m-focus-chip--on' : '')}
+                    aria-pressed={task.isActive}
+                    onClick={() => apply((s) => setActive(s, task.id))}
+                  >
+                    <Icon name="star" />
+                    {task.isActive ? 'Focusing' : 'Focus'}
+                  </button>
+                )}
+                <MobileSubtasks
+                  task={task}
+                  interactive={column === 'today'}
+                  readOnly={column === 'done'}
+                  {...subtaskHandlers}
+                />
+                {column !== 'done' &&
+                  (addingSubtask ? (
+                    <AddSubtaskForm
+                      taskId={task.id}
+                      onAddSubtask={subtaskHandlers.onAddSubtask}
+                      onClose={() => setAddingSubtask(false)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="m-card__add-subtask"
+                      onClick={() => setAddingSubtask(true)}
+                    >
+                      <Icon name="plus" /> Add subtask
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

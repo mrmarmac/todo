@@ -8,6 +8,13 @@ const LEFT_SNAP = 56;
 const FLICK = 0.5;
 /** Rightward travel (px) that counts as a genuine (if blocked) commit attempt. */
 const BLOCKED_INTENT = 48;
+/** How far past the card's own width the foreground travels off-screen on a
+ *  completion commit (plan §5) — "~110%" so it clears the card entirely. */
+const LEAVE_TRAVEL = 1.1;
+/** Duration (ms) of the completion exit animation — matches the `.m-card--leaving`
+ *  grid-rows collapse in mobile.css so the translate and the height collapse
+ *  finish together (plan §5). The dispatch itself fires after this timer. */
+const LEAVE_MS = 190;
 
 export interface UseCardSwipeOptions {
   /** Ignore all pointers (e.g. while the card is in edit mode). */
@@ -30,7 +37,7 @@ export interface UseCardSwipeOptions {
   onReveal: (id: string | null) => void;
 }
 
-type Phase = 'idle' | 'dragging';
+type Phase = 'idle' | 'dragging' | 'leaving';
 
 interface Gesture {
   active: boolean;
@@ -83,6 +90,18 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
   const velocity = useRef(new VelocityTracker());
   const suppressClick = useRef(false);
   const [phase, setPhase] = useState<Phase>('idle');
+  // True for the lifetime of the leaving animation (plan §5) — read
+  // synchronously (state updates are not) so the resting-offset effect below
+  // never snaps the foreground back mid-exit, and cleared/cancelled on unmount.
+  const leavingRef = useRef(false);
+  const leaveTimeout = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (leaveTimeout.current !== null) window.clearTimeout(leaveTimeout.current);
+    },
+    [],
+  );
 
   // Latest options behind a ref so the pointer handlers can stay stable
   // (useCallback with empty deps) yet always read current props mid-gesture.
@@ -121,13 +140,13 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
   // in flight — this is what springs a card closed when another card opens
   // (parent flips its `revealedId` away) or after a commit.
   useEffect(() => {
-    if (g.current.active) return;
+    if (g.current.active || leavingRef.current) return;
     settle(restingOffset());
   }, [opts.revealedId, opts.cardId, opts.revealWidth, opts.hasLeftActions, settle, restingOffset]);
 
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     const o = optsRef.current;
-    if (o.disabled) return;
+    if (o.disabled || leavingRef.current) return;
     if (e.pointerType !== 'touch' || !e.isPrimary) return;
     if (g.current.active) return;
 
@@ -238,11 +257,32 @@ export function useCardSwipe(opts: UseCardSwipeOptions) {
       const tx = gs.startOffset + dx;
       const vx = velocity.current.velocity();
 
-      // 1. Committed right-swipe.
+      // 1. Committed right-swipe: animate the card out first, dispatch after
+      // (plan §5). The foreground continues off-screen from its current `tx`
+      // (no jump) via the CSS transition that drag frames disable; the parent
+      // collapses the card's height in lockstep via the `leaving` phase's
+      // `.m-card--leaving` class. Reduced motion skips straight to dispatch.
       if (o.onCommitRight && !o.rightBlocked && tx > 0 && shouldCommitSwipe({ dx: tx, vx, width: gs.width })) {
         o.onReveal(null);
-        o.onCommitRight();
-        endGesture();
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+          o.onCommitRight();
+          endGesture();
+          return;
+        }
+        const fg = fgRef.current;
+        if (fg) {
+          fg.style.transition = `transform ${LEAVE_MS}ms ease-out`;
+          fg.style.transform = `translateX(${gs.width * LEAVE_TRAVEL}px)`;
+        }
+        g.current = freshGesture();
+        leavingRef.current = true;
+        setPhase('leaving');
+        leaveTimeout.current = window.setTimeout(() => {
+          leaveTimeout.current = null;
+          leavingRef.current = false;
+          optsRef.current.onCommitRight?.();
+        }, LEAVE_MS);
         return;
       }
       // 2. Blocked right-swipe attempt: hint + spring back.

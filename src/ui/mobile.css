@@ -694,4 +694,159 @@
       animation: none;
     }
   }
+
+  /* ── Completion exit animation (plan §5) ────────────────────────────────
+     Wraps every card's underlays + foreground so a completion commit can
+     collapse the whole `<li>` to zero height via the grid-rows 1fr→0fr trick
+     (mirrors `.m-card__expand`) while the foreground keeps sliding off-screen
+     under `useCardSwipe`'s own transition. `.m-card__leave-inner` takes over
+     as the underlays' positioned/clipping ancestor (instead of the `<li>`) so
+     they still fill and get clipped correctly as the row shrinks. */
+  .m-card__leave {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease-in;
+  }
+
+  .m-card--leaving .m-card__leave {
+    grid-template-rows: 0fr;
+  }
+
+  .m-card__leave-inner {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Nothing in a leaving card should be tappable — it's on its way out. */
+  .m-card--leaving .m-card__fg {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__leave {
+      transition: none;
+    }
+  }
+
+  /* ── "Done today (n)" disclosure (plan §5) ──────────────────────────────
+     A collapsed-by-default summary at the bottom of the Today page: the same
+     tasks the Done page lists, as muted, inert mini-rows (no gestures, no
+     expansion) plus a small "Back to Today" affordance. */
+  .m-done-today {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.25rem;
+  }
+
+  .m-done-today__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.4rem 0.25rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .m-done-today__header:hover,
+  .m-done-today__header:focus-visible {
+    color: var(--text);
+  }
+
+  .m-done-today__label {
+    flex: 1 1 auto;
+  }
+
+  .m-done-today__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--pill-bg);
+    color: var(--text);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .m-done-today__list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .m-done-today__row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.15rem 0.15rem 0.15rem 0.6rem;
+  }
+
+  .m-done-today__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    text-decoration: line-through;
+    font-size: 0.88rem;
+  }
+
+  .m-done-today__back {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .m-done-today__back:hover,
+  .m-done-today__back:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  /* Generic brief scale-pulse, re-triggered by remounting the element under a
+     new `key` (see MobileTodayPage's done-count badge). */
+  @keyframes m-pulse {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.3);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .m-pulse {
+    animation: m-pulse 320ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-pulse {
+      animation: none;
+    }
+  }
 }
