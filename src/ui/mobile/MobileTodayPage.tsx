@@ -1,6 +1,7 @@
 import type { AppState, Task } from '../../core/types';
 import type { UseConfirmResult } from '../ConfirmDialog';
 import { MobileTaskCard } from './MobileTaskCard';
+import type { ToastState } from './Toast';
 
 type ConfirmFn = UseConfirmResult['confirm'];
 
@@ -14,6 +15,9 @@ interface Props {
   onToggleExpand: (id: string) => void;
   onStartEdit: (id: string) => void;
   onCancelEdit: () => void;
+  revealedId: string | null;
+  onReveal: (id: string | null) => void;
+  showToast: (toast: ToastState) => void;
 }
 
 /**
@@ -31,6 +35,9 @@ export function MobileTodayPage({
   onToggleExpand,
   onStartEdit,
   onCancelEdit,
+  revealedId,
+  onReveal,
+  showToast,
 }: Props) {
   const todayTasks = tasks.filter((t) => t.column === 'today');
 
@@ -41,7 +48,7 @@ export function MobileTodayPage({
         <p className="m-page__placeholder">Add tasks from Master to see them here.</p>
       )}
       <ul className="m-card-list">
-        {todayTasks.map((task) => (
+        {todayTasks.map((task, i) => (
           <MobileTaskCard
             key={task.id}
             task={task}
@@ -54,6 +61,10 @@ export function MobileTodayPage({
             onCancelEdit={onCancelEdit}
             apply={apply}
             confirm={confirm}
+            revealedId={revealedId}
+            onReveal={onReveal}
+            showToast={showToast}
+            todayIndex={i}
           />
         ))}
       </ul>

@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AppState } from '../../core/types';
 import { dayProgress } from '../../core/progress';
 import type { UseConfirmResult } from '../ConfirmDialog';
 import { MobileMasterPage } from './MobileMasterPage';
 import { MobileTodayPage } from './MobileTodayPage';
 import { MobileDonePage } from './MobileDonePage';
+import { Toast, type ToastState } from './Toast';
 
 type ConfirmFn = UseConfirmResult['confirm'];
 
@@ -36,6 +37,20 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
   // edit rather than leaving stale edit state to resurface later.
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Exactly one card may have its swipe-left action layer revealed at a time
+  // (plan §3): opening one, or starting a gesture on another, closes it.
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  // Undo toast (plan §4): a new toast replaces the old; 5s auto-dismiss with
+  // the timer reset on every replacement (the effect below re-runs per toast).
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const showToast = useCallback((next: ToastState) => setToast(next), []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   function toggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -137,6 +152,9 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
             onToggleExpand={toggleExpand}
             onStartEdit={setEditingId}
             onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
           />
         </div>
         <div className="m-page">
@@ -150,6 +168,9 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
             onToggleExpand={toggleExpand}
             onStartEdit={setEditingId}
             onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
           />
         </div>
         <div className="m-page">
@@ -164,9 +185,26 @@ export function MobileBoard({ state, today, apply, confirm }: Props) {
             onToggleExpand={toggleExpand}
             onStartEdit={setEditingId}
             onCancelEdit={() => setEditingId(null)}
+            revealedId={revealedId}
+            onReveal={setRevealedId}
+            showToast={showToast}
           />
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          actionLabel={toast.actionLabel}
+          onAction={
+            toast.onAction
+              ? () => {
+                  toast.onAction?.();
+                  setToast(null);
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }
