@@ -1,8 +1,7 @@
 import type { AppState, HistoryEntry, Task } from '../../core/types';
 import type { UseConfirmResult } from '../ConfirmDialog';
-import { TaskTitle } from '../TaskTitle';
-import { DueDate } from '../DueDate';
 import { HistoryPanel } from '../HistoryPanel';
+import { MobileTaskCard } from './MobileTaskCard';
 
 type ConfirmFn = UseConfirmResult['confirm'];
 
@@ -10,36 +9,32 @@ interface Props {
   tasks: Task[];
   today: string;
   history: HistoryEntry[];
-  /** Not read yet — plumbed through for Phase 2's card actions. */
   apply: (fn: (s: AppState) => AppState) => void;
-  /** Not read yet — plumbed through for Phase 2's card actions. */
   confirm: ConfirmFn;
-}
-
-/** Compact "n/m" subtask completion chip with a micro progress bar; `null` when there are no subtasks. */
-function SubtaskProgressChip({ task }: { task: Task }) {
-  const total = task.subtasks.length;
-  if (total === 0) return null;
-  const completed = task.subtasks.filter((s) => s.isCompleted).length;
-  const pct = Math.round((completed / total) * 100);
-  return (
-    <span className="m-progress-chip" aria-label={`${completed} of ${total} subtasks done`}>
-      <span className="m-progress-chip__label">
-        {completed}/{total}
-      </span>
-      <span className="m-progress-chip__bar">
-        <span className="m-progress-chip__fill" style={{ width: `${pct}%` }} />
-      </span>
-    </span>
-  );
+  expandedId: string | null;
+  editingId: string | null;
+  onToggleExpand: (id: string) => void;
+  onStartEdit: (id: string) => void;
+  onCancelEdit: () => void;
 }
 
 /**
- * Done page of the mobile pager: static collapsed cards, no actions yet
- * (Phase 1). Also hosts the relocated {@link HistoryPanel} (App.tsx no longer
- * renders it directly on mobile — see the `isMobile` branch there).
+ * Done page of the mobile pager: accordion cards (Phase 2, plan §Files). Also
+ * hosts the relocated {@link HistoryPanel} (App.tsx no longer renders it
+ * directly on mobile — see the `isMobile` branch there).
  */
-export function MobileDonePage({ tasks, today, history }: Props) {
+export function MobileDonePage({
+  tasks,
+  today,
+  history,
+  apply,
+  confirm,
+  expandedId,
+  editingId,
+  onToggleExpand,
+  onStartEdit,
+  onCancelEdit,
+}: Props) {
   const doneTasks = tasks.filter((t) => t.column === 'done');
 
   return (
@@ -50,14 +45,19 @@ export function MobileDonePage({ tasks, today, history }: Props) {
       )}
       <ul className="m-card-list">
         {doneTasks.map((task) => (
-          <li key={task.id} className="m-card">
-            <div className="m-card__main">
-              <TaskTitle title={task.title} className="m-card__title" />
-              {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
-              {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
-            </div>
-            <SubtaskProgressChip task={task} />
-          </li>
+          <MobileTaskCard
+            key={task.id}
+            task={task}
+            today={today}
+            column="done"
+            expanded={expandedId === task.id}
+            editing={editingId === task.id}
+            onToggleExpand={() => onToggleExpand(task.id)}
+            onStartEdit={() => onStartEdit(task.id)}
+            onCancelEdit={onCancelEdit}
+            apply={apply}
+            confirm={confirm}
+          />
         ))}
       </ul>
       <HistoryPanel history={history} />
