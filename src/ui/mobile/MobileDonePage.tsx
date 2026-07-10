@@ -2,6 +2,7 @@ import type { AppState, HistoryEntry, Task } from '../../core/types';
 import type { UseConfirmResult } from '../ConfirmDialog';
 import { HistoryPanel } from '../HistoryPanel';
 import { MobileTaskCard } from './MobileTaskCard';
+import type { ToastState } from './Toast';
 
 type ConfirmFn = UseConfirmResult['confirm'];
 
@@ -16,6 +17,9 @@ interface Props {
   onToggleExpand: (id: string) => void;
   onStartEdit: (id: string) => void;
   onCancelEdit: () => void;
+  revealedId: string | null;
+  onReveal: (id: string | null) => void;
+  showToast: (toast: ToastState) => void;
 }
 
 /**
@@ -34,6 +38,9 @@ export function MobileDonePage({
   onToggleExpand,
   onStartEdit,
   onCancelEdit,
+  revealedId,
+  onReveal,
+  showToast,
 }: Props) {
   const doneTasks = tasks.filter((t) => t.column === 'done');
 
@@ -57,6 +64,9 @@ export function MobileDonePage({
             onCancelEdit={onCancelEdit}
             apply={apply}
             confirm={confirm}
+            revealedId={revealedId}
+            onReveal={onReveal}
+            showToast={showToast}
           />
         ))}
       </ul>

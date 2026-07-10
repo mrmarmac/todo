@@ -139,32 +139,126 @@
     gap: 0.6rem;
   }
 
+  /* The card is a positioning context whose overflow is clipped so the swipe
+     underlays (absolutely filling it) stay inside the rounded corners. The
+     visible surface lives in .m-card__fg, which is what translates under the
+     finger. */
   .m-card {
-    position: relative; /* anchors .m-card__more */
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.75rem 0.85rem;
+    position: relative;
+    overflow: hidden;
     background: var(--col-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
   }
 
+  /* Foreground layer: the draggable card surface (plan §3). Opaque so it
+     covers the underlays at rest; `pan-y` keeps vertical scrolling native
+     while horizontal drags are captured in JS; text/callout selection is
+     suppressed so a swipe never starts a selection. */
+  .m-card__fg {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem;
+    background: var(--col-bg);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition: transform 0.2s ease;
+  }
+
   /* Reserve room so the header's wrapped content never runs under the
      overlaid ⋯ button (only rendered while expanded). */
-  .m-card--expanded {
+  .m-card--expanded .m-card__fg {
     padding-right: 2.75rem;
   }
 
   /* Active item (SPEC §6.8): same accent left-bar treatment as .task--active. */
   .m-card--active {
     border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  .m-card--active .m-card__fg {
     background: var(--active-bg);
-    box-shadow: inset 3px 0 0 0 var(--accent), 0 0 0 2px var(--ring);
+    box-shadow: inset 3px 0 0 0 var(--accent);
   }
 
   .m-card--editing {
     cursor: default;
+  }
+
+  .m-card__editbody {
+    padding: 0.75rem 0.85rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-card__fg {
+      transition: none;
+    }
+  }
+
+  /* Swipe underlays, revealed as the foreground slides. Opacity is toggled
+     imperatively by useCardSwipe so only the relevant one shows per drag. */
+  .m-card__under {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    opacity: 0;
+  }
+
+  .m-card__under--complete {
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 1.35rem;
+    color: #fff;
+    font-size: 1.4rem;
+  }
+
+  .m-card__under--ok {
+    background: var(--sync-ok);
+  }
+
+  .m-card__under--accent {
+    background: var(--accent);
+  }
+
+  .m-card__under--actions {
+    justify-content: flex-end;
+  }
+
+  /* Left-reveal action buttons: 56px wide, ≥44px tall tap targets. */
+  .m-card__under-btn {
+    width: 56px;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border: none;
+    color: #fff;
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .m-card__under-btn .icon {
+    width: 1.15em;
+    height: 1.15em;
+  }
+
+  .m-card__under-btn--accent {
+    background: var(--accent);
+  }
+
+  .m-card__under-btn--danger {
+    background: var(--danger);
   }
 
   /* Whole collapsed card is the tap target: a `role="button"` div (not a real
@@ -501,5 +595,69 @@
     border-radius: 0;
     font-weight: 600;
     justify-content: center;
+  }
+
+  /* ── Undo toast (plan §4) ──────────────────────────────────────────────
+     A single bar above the QuickAdd FAB (z-index 60) but below the action
+     sheet / confirm dialog (120 / 200). */
+  .m-toast {
+    position: fixed;
+    left: calc(1rem + env(safe-area-inset-left));
+    right: calc(1rem + env(safe-area-inset-right));
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.5rem 0.6rem 1rem;
+    background: var(--col-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+    animation: m-toast-in 0.2s ease-out;
+  }
+
+  .m-toast__msg {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .m-toast__action {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.9rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .m-toast__action:hover,
+  .m-toast__action:focus-visible {
+    background: var(--pill-bg);
+  }
+
+  @keyframes m-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-toast {
+      animation: none;
+    }
   }
 }

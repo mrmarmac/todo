@@ -2,6 +2,7 @@ import type { AppState, Task } from '../../core/types';
 import { sortMaster } from '../../core/sort';
 import type { UseConfirmResult } from '../ConfirmDialog';
 import { MobileTaskCard } from './MobileTaskCard';
+import type { ToastState } from './Toast';
 
 type ConfirmFn = UseConfirmResult['confirm'];
 
@@ -15,6 +16,9 @@ interface Props {
   onToggleExpand: (id: string) => void;
   onStartEdit: (id: string) => void;
   onCancelEdit: () => void;
+  revealedId: string | null;
+  onReveal: (id: string | null) => void;
+  showToast: (toast: ToastState) => void;
 }
 
 /** Master page of the mobile pager: accordion cards (Phase 2, plan §Files). */
@@ -28,6 +32,9 @@ export function MobileMasterPage({
   onToggleExpand,
   onStartEdit,
   onCancelEdit,
+  revealedId,
+  onReveal,
+  showToast,
 }: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
 
@@ -51,6 +58,9 @@ export function MobileMasterPage({
             onCancelEdit={onCancelEdit}
             apply={apply}
             confirm={confirm}
+            revealedId={revealedId}
+            onReveal={onReveal}
+            showToast={showToast}
           />
         ))}
       </ul>
