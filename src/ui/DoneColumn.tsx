@@ -18,22 +18,15 @@ interface Props {
   tasks: Task[];
   today: string;
   onUncomplete: (id: string) => void;
-  onClear: () => void;
 }
 
-export function DoneColumn({ tasks, today, onUncomplete, onClear }: Props) {
+export function DoneColumn({ tasks, today, onUncomplete }: Props) {
   const doneTasks = tasks.filter((t) => t.column === 'done');
 
   return (
-    <section className="column column--done">
-      <div className="column__head">
-        <h2>Done</h2>
-        <button type="button" disabled={doneTasks.length === 0} onClick={onClear}>
-          Clear
-        </button>
-      </div>
+    <>
       {doneTasks.length === 0 && (
-        <p className="column__placeholder">Completed tasks land here until you Clear them.</p>
+        <p className="col__placeholder">Completed tasks land here until you Clear them.</p>
       )}
       <ul className="task-list">
         {doneTasks.map((task) => (
@@ -50,17 +43,24 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear }: Props) {
               }
             }}
           >
+            <span className="task__mark" aria-hidden="true" />
             <div className="task__main">
               <TaskTitle title={task.title} className="task__title task__title--done" />
-              {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
-              {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
+              {task.sourceTaskId && <span className="task__tag">copy</span>}
             </div>
+            {task.dueDate ? (
+              <DueDate dueDate={task.dueDate} today={today} done />
+            ) : (
+              <span className="task__due task__due--none" aria-hidden="true">
+                —
+              </span>
+            )}
             <div className="task__actions">
               <button
                 type="button"
                 className="icon-btn"
                 aria-label="Undo (back to Today)"
-                title="Undo (back to Today)"
+                title="Undo — back to Today (u)"
                 onClick={() => onUncomplete(task.id)}
               >
                 <Icon name="rotate-ccw" />
@@ -70,6 +70,6 @@ export function DoneColumn({ tasks, today, onUncomplete, onClear }: Props) {
           </li>
         ))}
       </ul>
-    </section>
+    </>
   );
 }
