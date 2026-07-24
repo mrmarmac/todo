@@ -63,10 +63,9 @@ export function TodayColumn({
   }
 
   return (
-    <section className="column column--today">
-      <h2>Today</h2>
+    <>
       {todayTasks.length === 0 && (
-        <p className="column__placeholder">Add tasks from Master with “→”.</p>
+        <p className="col__placeholder">Add tasks from Master with “→”.</p>
       )}
       <ul className="task-list">
         {todayTasks.map((task, index) => {
@@ -138,6 +137,7 @@ export function TodayColumn({
                 setInsertAt(null);
               }}
             >
+              <span className="task__mark" aria-hidden="true" />
               <div className="task__main">
                 <span className="task__drag-handle" aria-hidden="true">
                   ⠿
@@ -147,9 +147,15 @@ export function TodayColumn({
                   active={task.isActive}
                   onActivate={() => onSetActive(task.id)}
                 />
-                {task.sourceTaskId && <span className="badge badge--copy">recurring</span>}
-                {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
+                {task.sourceTaskId && <span className="task__tag">copy</span>}
               </div>
+              {task.dueDate ? (
+                <DueDate dueDate={task.dueDate} today={today} />
+              ) : (
+                <span className="task__due task__due--none" aria-hidden="true">
+                  —
+                </span>
+              )}
               <div className="task__actions">
                 <button
                   type="button"
@@ -173,7 +179,7 @@ export function TodayColumn({
                 </button>
                 <button
                   type="button"
-                  className="icon-btn btn-primary"
+                  className="icon-btn icon-btn--primary"
                   disabled={openSubtasks}
                   aria-label="Complete"
                   title={openSubtasks ? 'Finish all subtasks first' : 'Complete'}
@@ -246,6 +252,6 @@ export function TodayColumn({
           />
         )}
       </ul>
-    </section>
+    </>
   );
 }

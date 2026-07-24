@@ -1,7 +1,7 @@
 import type { AppState } from './types';
 
 /**
- * Day-progress selector for the mobile shell's progress bar. "done" combines
+ * Day-progress selector for the header's progress bar. "done" combines
  * tasks currently sitting in the Done column with ones already collapsed into
  * History under today's date, so the ratio survives a Clear (which only moves
  * Done → History) and resets to 0/0 on New Day (which advances currentDay).
