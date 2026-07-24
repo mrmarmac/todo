@@ -64,6 +64,20 @@ export function dueDateUrgency(dueDate: string, today: string): DueUrgency {
   return 'upcoming';
 }
 
+/** Weekday index for an ISO date, 0 = Monday … 6 = Sunday. */
+export function isoWeekday(iso: string): number {
+  // Epoch day 0 (1970-01-01) was a Thursday, so +3 makes Monday ≡ 0.
+  return (dayNumber(iso) + 3) % 7;
+}
+
+/** True when `iso` is a well-formed, real calendar date (rejects 2026-02-31). */
+export function isValidISODate(iso: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
 /** `iso` (YYYY-MM-DD) advanced by `n` whole days (may be negative). */
 export function addDaysISO(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);

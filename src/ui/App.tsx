@@ -21,20 +21,19 @@ import {
   startNewDay,
   toISODate,
 } from '../core/state';
+import { dayProgress } from '../core/progress';
 import { exportState, importState } from '../core/exportImport';
 import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
+import { Column, type ColumnKey } from './Column';
 import { MasterColumn } from './MasterColumn';
 import { TodayColumn } from './TodayColumn';
 import { DoneColumn } from './DoneColumn';
 import { HistoryPanel } from './HistoryPanel';
 import { ShortcutHelp } from './ShortcutHelp';
 import { SyncSettings } from './SyncSettings';
-import { QuickAdd } from './QuickAdd';
 import { useGistSync, syncStatusLabel } from './useGistSync';
 import { useConfirm } from './ConfirmDialog';
-import { useMediaQuery } from './useMediaQuery';
-import { MobileBoard } from './mobile/MobileBoard';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -42,6 +41,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
   const tag = target.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
+
+/** How long a newly created task stays highlighted, in ms. */
+const FLASH_MS = 1600;
 
 /**
  * Wall-clock ISO date (YYYY-MM-DD), kept current while the app stays open so
@@ -69,6 +71,8 @@ function useWallClockDay(): string {
   return today;
 }
 
+type CollapsedState = Record<ColumnKey, boolean>;
+
 export function App() {
   const [state, setState] = useState<AppState>(() => load());
   // Due-date labels anchor on the actual wall-clock day, not state.currentDay,
@@ -80,21 +84,35 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Ephemeral focus preference (plan R2 §1) — not persisted, resets each load.
-  const [masterCollapsed, setMasterCollapsed] = useState(false);
+  // Ephemeral view preference — not persisted, resets each load.
+  const [collapsed, setCollapsed] = useState<CollapsedState>({
+    master: false,
+    today: false,
+    done: false,
+  });
+  // Id of the task created most recently, highlighted briefly so it can be
+  // spotted without scanning the list (it sorts into place, not to the bottom).
+  const [flashId, setFlashId] = useState<string | null>(null);
   const { confirm, dialog } = useConfirm();
   const sync = useGistSync(state, setState, confirm);
-  // Matches the CSS breakpoint that stacks the board (styles.css); below it
-  // the mobile shell (pager + segmented control) replaces the desktop grid.
-  const isMobile = useMediaQuery('(max-width: 900px)');
+
+  const toggleColumn = (key: ColumnKey) =>
+    setCollapsed((c) => ({ ...c, [key]: !c[key] }));
 
   // Auto-save full app state on every change (D2).
   useEffect(() => {
     save(state);
   }, [state]);
 
-  // Global keyboard shortcuts (plan §2). Card-scoped shortcuts live on each
-  // card's own onKeyDown; these are the app-level ones.
+  // Drop the new-task highlight once it has served its purpose.
+  useEffect(() => {
+    if (flashId === null) return;
+    const id = window.setTimeout(() => setFlashId(null), FLASH_MS);
+    return () => window.clearTimeout(id);
+  }, [flashId]);
+
+  // Global keyboard shortcuts. Card-scoped shortcuts live on each card's own
+  // onKeyDown; these are the app-level ones.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Never hijack keys while the user is typing in a field.
@@ -106,9 +124,15 @@ export function App() {
       } else if (e.key === 'n') {
         e.preventDefault();
         addInputRef.current?.focus();
-      } else if (e.key === 'm') {
+      } else if (e.key === '1' || e.key === 'm') {
         e.preventDefault();
-        setMasterCollapsed((v) => !v);
+        toggleColumn('master');
+      } else if (e.key === '2') {
+        e.preventDefault();
+        toggleColumn('today');
+      } else if (e.key === '3') {
+        e.preventDefault();
+        toggleColumn('done');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -170,9 +194,15 @@ export function App() {
     if (ok) setState(restored);
   };
 
-  // Shared create path so QuickAdd (mobile FAB) lands tasks the exact same
-  // way as MasterColumn's own "New task…" field — both funnel through here.
-  const handleCreateTask = (input: CreateTaskInput) => setState((s) => createTask(s, input));
+  // Computed eagerly (rather than inside a setState updater) so the new task's
+  // id is available to flash it — createTask appends, so it is the last task.
+  const handleCreateTask = (input: CreateTaskInput) => {
+    const next = createTask(state, input);
+    setState(next);
+    setFlashId(next.tasks[next.tasks.length - 1].id);
+    // A task added while Master is collapsed would otherwise vanish silently.
+    setCollapsed((c) => (c.master ? { ...c, master: false } : c));
+  };
 
   const subtaskHandlers: SubtaskHandlers = {
     onAddSubtask: (taskId, title) => setState((s) => addSubtask(s, taskId, title)),
@@ -200,24 +230,72 @@ export function App() {
     if (ok) setState((s) => startNewDay(s, new Date()));
   };
 
+  const masterCount = state.tasks.filter((t) => t.column === 'master').length;
+  const todayCount = state.tasks.filter((t) => t.column === 'today').length;
+  const doneCount = state.tasks.filter((t) => t.column === 'done').length;
+  const progress = dayProgress(state);
+  const progressPct =
+    progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100);
+
   return (
     <div className="app">
       <header className="app__header">
-        <div className="app__title-row">
-          <h1>To-Do</h1>
-          <span className="app__day-label">
-            <span className="app__day-label__prefix">Day: </span>
-            {state.currentDay}
+        <div className="app__brand">
+          <span className="app__marks" aria-hidden="true">
+            <i /><i /><i />
           </span>
+          <h1>To-Do</h1>
         </div>
+
         <div className="app__day">
-          <button type="button" className="app__new-day" onClick={handleStartNewDay}>
+          <span className="app__day-label">Day</span>
+          <time className="app__day-value" dateTime={state.currentDay}>
+            {state.currentDay}
+          </time>
+        </div>
+
+        {progress.total > 0 && (
+          <div
+            className="app__progress"
+            role="progressbar"
+            aria-valuenow={progressPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Progress today"
+            title={`${progress.done} of ${progress.total} done today`}
+          >
+            <span className="app__progress-fill" style={{ width: `${progressPct}%` }} />
+          </div>
+        )}
+
+        <div className="app__actions">
+          <button type="button" className="btn" onClick={handleStartNewDay}>
             New Day
+          </button>
+          {(sync.connected || sync.status === 'error') && (
+            <button
+              type="button"
+              className="app__sync-indicator"
+              aria-label={`Sync status: ${syncStatusLabel(sync.status)}`}
+              title={`Sync: ${syncStatusLabel(sync.status)}`}
+              onClick={() => setShowSync(true)}
+            >
+              <span className={`sync-dot sync-dot--${sync.status}`} aria-hidden="true" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn--quiet"
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+            onClick={() => setShowHelp(true)}
+          >
+            ?
           </button>
           <div className="app__menu" ref={menuRef}>
             <button
               type="button"
-              className="app__menu-btn"
+              className="btn btn--quiet"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="More actions"
@@ -268,44 +346,37 @@ export function App() {
             hidden
             onChange={handleImportFile}
           />
-          {(sync.connected || sync.status === 'error') && (
-            <button
-              type="button"
-              className="app__sync-indicator"
-              aria-label={`Sync status: ${syncStatusLabel(sync.status)}`}
-              title={`Sync: ${syncStatusLabel(sync.status)}`}
-              onClick={() => setShowSync(true)}
-            >
-              <span className={`sync-dot sync-dot--${sync.status}`} aria-hidden="true" />
-            </button>
-          )}
-          <button
-            type="button"
-            className="app__help"
-            title="Keyboard shortcuts (?)"
-            aria-label="Keyboard shortcuts"
-            onClick={() => setShowHelp(true)}
-          >
-            ?
-          </button>
         </div>
       </header>
-      {isMobile ? (
-        <MobileBoard state={state} today={today} apply={setState} confirm={confirm} />
-      ) : (
-        <main className={'board' + (masterCollapsed ? ' board--master-collapsed' : '')}>
+
+      <main className="board">
+        <Column
+          columnKey="master"
+          name="Master"
+          count={masterCount}
+          collapsed={collapsed.master}
+          onToggleCollapse={() => toggleColumn('master')}
+        >
           <MasterColumn
             tasks={state.tasks}
             today={today}
             addInputRef={addInputRef}
-            collapsed={masterCollapsed}
-            onToggleCollapse={() => setMasterCollapsed((v) => !v)}
+            flashId={flashId}
             onCreate={handleCreateTask}
             onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
             onDelete={(id) => setState((s) => deleteTask(s, id))}
             onAddToday={(id) => setState((s) => moveToToday(s, id))}
             subtaskHandlers={subtaskHandlers}
           />
+        </Column>
+
+        <Column
+          columnKey="today"
+          name="Today"
+          count={todayCount}
+          collapsed={collapsed.today}
+          onToggleCollapse={() => toggleColumn('today')}
+        >
           <TodayColumn
             tasks={state.tasks}
             today={today}
@@ -317,16 +388,35 @@ export function App() {
             onDelete={(id) => setState((s) => deleteTask(s, id))}
             subtaskHandlers={subtaskHandlers}
           />
+        </Column>
+
+        <Column
+          columnKey="done"
+          name="Done"
+          count={doneCount}
+          collapsed={collapsed.done}
+          onToggleCollapse={() => toggleColumn('done')}
+          actions={
+            <button
+              type="button"
+              className="btn btn--small"
+              disabled={doneCount === 0}
+              title="Move completed tasks into History"
+              onClick={() => setState((s) => clearDone(s, new Date()))}
+            >
+              Clear
+            </button>
+          }
+        >
           <DoneColumn
             tasks={state.tasks}
             today={today}
             onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
-            onClear={() => setState((s) => clearDone(s, new Date()))}
           />
-        </main>
-      )}
-      {!isMobile && <HistoryPanel history={state.history} />}
-      <QuickAdd onCreate={handleCreateTask} />
+        </Column>
+      </main>
+
+      <HistoryPanel history={state.history} />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />

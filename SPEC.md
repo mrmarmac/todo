@@ -70,6 +70,8 @@ Represents one completed occurrence.
 ### 6.1 Add
 Create a task in Master. Required: title. Optional: due date, recurring flag.
 
+The due date may be **typed as a trailing token in the title** — `today`, `tomorrow`, `mon`–`sun`, `+3d`, `+2w`, or an ISO date — which is stripped from the title and resolved to a date. Only the final whitespace-separated token counts, and only when a non-empty title remains; a trailing full stop ("Friday.") keeps a date word literal. The resolved date is shown beside the field before submitting, and a date picker remains available. A newly created task is briefly highlighted, since Master sorts (§7) and the task lands mid-list rather than at the bottom.
+
 ### 6.2 Edit / Delete
 Tasks can be edited and deleted from any column.
 - Deleting a normal task is permanent.
@@ -146,6 +148,10 @@ History: minimal read-only panel behind a toggle button, entries grouped by day,
 
 Interactions: click to move task from Master→Today, remove control on Today tasks, drag to reorder within Today, Clear button, Start New Day button, set/unset active, undo completion.
 
+**Column collapse.** Each of the three columns can be collapsed to its header. The layout decides what the freed space does: on desktop the board is a three-track grid, so a collapsed column keeps its horizontal slot and its neighbours do not move; on a narrow screen the board is a single stacked track, so collapsing frees vertical space and the columns below flow up to fill it.
+
+**One responsive board.** Desktop and mobile share the same board and the same markup; there is no separate mobile shell. Touch devices get permanently visible row actions at a full tap target, and reorder Today with the Move up/down controls rather than dragging.
+
 ## 11. Acceptance Criteria
 
 1. Runs as a PWA on MacOS.
@@ -173,3 +179,15 @@ Optional, off by default. A private ("secret") GitHub gist holds the full app st
 - **Conflict**: when both the local device and the gist changed since the last successful sync, the user is asked which copy to keep; the other is overwritten.
 - **Disconnect**: stops syncing on this device only. Local data is untouched and the gist is not deleted — reconnecting with the same token resumes sync against it.
 - **Status**: a small header indicator (shown once connected, or on error) reflects synced / syncing / offline / error; the Sync… dialog shows the same status plus a link to the gist and a manual "Sync now".
+
+## 13. Visual Design
+
+"Warm Bauhaus" — geometric modernism on warm paper. Flat shapes, one accent at a time, no ornament.
+
+**Palette.** Paper `#F6F1E7`, ink `#1E1C19`, ochre `#E0A32E`, vermilion `#C0492E`, sage `#6E8B6A`, blue `#2C4A7C`. Each column owns exactly one hue — blue for Master, ochre for Today, sage for Done — so only one accent is ever in play. Vermilion is reserved for the active item and overdue dates. A dark theme re-tunes the same six colours against a dark ground.
+
+**Type.** Futura (Renner, 1927) with geometric fallbacks for display and labels, a humanist sans for body text, and a monospace for dates and counts so figures align. No webfont is loaded, so nothing can silently fall back.
+
+**Structure.** Heavy ink rules build the grid: a 3px rule under each column header, hairlines between rows. Tasks are rows on ruled paper, not cards. Colour shrinks to one 9px mark per row — a circle for a task, a square for a recurring master.
+
+**No layout shift.** Controls never appear by expanding a container that pushes content around: the add form's height is constant regardless of focus, and row actions are lifted out of layout on hover-capable devices. A click can never land on something that moved.

@@ -3,7 +3,8 @@ import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
-import { addDaysISO } from '../core/dates';
+import { parseTaskInput } from '../core/taskInput';
+import { formatRelativeDueDate } from '../core/dates';
 import { Icon } from './Icon';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditForm } from './TaskEditForm';
@@ -15,8 +16,8 @@ interface Props {
   tasks: Task[];
   today: string;
   addInputRef?: RefObject<HTMLInputElement>;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
+  /** Id of the most recently created task, briefly highlighted so it can be found. */
+  flashId?: string | null;
   onCreate: (input: CreateTaskInput) => void;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
@@ -28,8 +29,7 @@ export function MasterColumn({
   tasks,
   today,
   addInputRef,
-  collapsed = false,
-  onToggleCollapse,
+  flashId,
   onCreate,
   onUpdate,
   onDelete,
@@ -38,42 +38,11 @@ export function MasterColumn({
 }: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
 
-  // Collapsed slim rail (plan R2 §1): a thin strip with a vertical label so
-  // Today/Done get the focus. Task data is untouched and returns on expand.
-  if (collapsed) {
-    return (
-      <section className="column column--master column--collapsed">
-        <button
-          type="button"
-          className="column__expand"
-          aria-label="Expand Master"
-          title="Expand Master (m)"
-          onClick={onToggleCollapse}
-        >
-          <span className="column__rail-label">Master</span>
-          <span aria-hidden="true">›</span>
-        </button>
-      </section>
-    );
-  }
-
   return (
-    <section className="column column--master">
-      <div className="column__head">
-        <h2>Master</h2>
-        <button
-          type="button"
-          className="icon-btn column__collapse"
-          aria-label="Collapse Master"
-          title="Collapse Master (m)"
-          onClick={onToggleCollapse}
-        >
-          ‹
-        </button>
-      </div>
+    <>
       <AddTaskForm onCreate={onCreate} inputRef={addInputRef} today={today} />
       {masterTasks.length === 0 && (
-        <p className="column__placeholder">No tasks yet — add one above to get started.</p>
+        <p className="col__placeholder">No tasks yet — add one above to get started.</p>
       )}
       <ul className="task-list">
         {masterTasks.map((task) => (
@@ -81,6 +50,7 @@ export function MasterColumn({
             key={task.id}
             task={task}
             today={today}
+            flash={task.id === flashId}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAddToday={onAddToday}
@@ -88,10 +58,19 @@ export function MasterColumn({
           />
         ))}
       </ul>
-    </section>
+    </>
   );
 }
 
+/**
+ * One-line add form. The due date is typed as a trailing token in the title
+ * ("Renew passport fri", "Draft report +3d") and echoed live in the hint, so a
+ * task can be filed with a date without ever leaving the keyboard.
+ *
+ * Nothing here is progressively disclosed: the row's height is constant, so
+ * focusing or blurring the field can never reflow the task list underneath and
+ * swallow the next click.
+ */
 function AddTaskForm({
   onCreate,
   inputRef,
@@ -101,87 +80,73 @@ function AddTaskForm({
   inputRef?: RefObject<HTMLInputElement>;
   today: string;
 }) {
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [raw, setRaw] = useState('');
+  const [pickedDate, setPickedDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+
+  const parsed = parseTaskInput(raw, today);
+  // A typed token wins over the picker, so the last thing you expressed is the
+  // one that counts; the picker stays for setting a date without typing.
+  const dueDate = parsed.dueDate ?? (pickedDate || null);
+  const canSubmit = parsed.title.trim() !== '';
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (title.trim() === '') return;
-    onCreate({ title, dueDate: dueDate || null, isRecurring });
-    setTitle('');
-    setDueDate('');
+    if (!canSubmit) return;
+    onCreate({ title: parsed.title, dueDate, isRecurring });
+    setRaw('');
+    setPickedDate('');
     setIsRecurring(false);
     // Keep focus in the field so several tasks can be added in a row.
     inputRef?.current?.focus();
   }
 
-  // Single-click relative due dates. Toggle off if the same day is re-picked.
-  const quickDates: Array<{ label: string; value: string }> = [
-    { label: 'Today', value: today },
-    { label: '+1d', value: addDaysISO(today, 1) },
-    { label: '+7d', value: addDaysISO(today, 7) },
-  ];
-  const pickQuick = (value: string) => setDueDate((prev) => (prev === value ? '' : value));
-
   return (
-    <form className="add-form" onSubmit={submit}>
+    <form className="add" onSubmit={submit}>
       <input
         ref={inputRef}
-        className="add-form__title"
+        className="add__input"
         type="text"
-        placeholder="New task…"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        aria-label="Task title"
+        placeholder="New task… “fri”, “+3d”"
+        title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+        aria-label="New task"
+        aria-describedby="add-hint"
       />
-      {/* Revealed only while the form has focus (CSS :focus-within). */}
-      <div className="add-form__advanced">
-        <div className="add-form__row">
-          <span className="add-form__label">Due</span>
-          <div className="add-form__quick">
-            {quickDates.map((q) => (
-              <button
-                key={q.label}
-                type="button"
-                className={'add-form__chip' + (dueDate === q.value ? ' add-form__chip--active' : '')}
-                // Prevent the chip from stealing focus from the title input on
-                // mousedown: the advanced panel is revealed via :focus-within, so
-                // a focus shift would collapse it before the click registers.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pickQuick(q.value)}
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-          <input
-            className="add-form__date"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            aria-label="Due date"
-          />
-          <label className="add-form__recurring">
-            <input
-              type="checkbox"
-              checked={isRecurring}
-              onChange={(e) => setIsRecurring(e.target.checked)}
-            />
-            Recurring
-          </label>
-          <button
-            type="submit"
-            className="add-form__submit"
-            // Same focus-preservation as the chips (see above) so the panel
-            // does not collapse out from under the click on mousedown.
-            onMouseDown={(e) => e.preventDefault()}
-            disabled={title.trim() === ''}
-          >
-            Add
-          </button>
-        </div>
-      </div>
+      <span className="add__hint" id="add-hint" aria-live="polite">
+        {parsed.dueDate && (
+          <span className="add__hint-due" title={`“${parsed.token}” → ${parsed.dueDate}`}>
+            {formatRelativeDueDate(parsed.dueDate, today)}
+          </span>
+        )}
+      </span>
+      <input
+        className="add__date"
+        type="date"
+        value={dueDate ?? ''}
+        // A typed token owns the date while it is present (see `dueDate`).
+        disabled={parsed.dueDate !== null}
+        title={
+          parsed.dueDate !== null
+            ? 'Date comes from the text — clear the token to pick one here'
+            : 'Pick a due date'
+        }
+        onChange={(e) => setPickedDate(e.target.value)}
+        aria-label="Due date"
+      />
+      <button
+        type="button"
+        className={'add__recur' + (isRecurring ? ' add__recur--on' : '')}
+        aria-pressed={isRecurring}
+        title="Recurring task — stays in Master and is copied into Today"
+        onClick={() => setIsRecurring((v) => !v)}
+      >
+        Repeat
+      </button>
+      <button type="submit" className="add__submit" disabled={!canSubmit}>
+        Add
+      </button>
     </form>
   );
 }
@@ -189,6 +154,7 @@ function AddTaskForm({
 function MasterTask({
   task,
   today,
+  flash,
   onUpdate,
   onDelete,
   onAddToday,
@@ -196,6 +162,7 @@ function MasterTask({
 }: {
   task: Task;
   today: string;
+  flash: boolean;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
   onAddToday: (id: string) => void;
@@ -240,21 +207,35 @@ function MasterTask({
 
   return (
     <li
-      className={`task${task.isRecurring ? ' task--recurring' : ''}`}
+      className={
+        'task' +
+        (task.isRecurring ? ' task--recurring' : '') +
+        (flash ? ' task--flash' : '')
+      }
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
+      <span
+        className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
+        aria-hidden="true"
+      />
       <div className="task__main">
         <TaskTitle title={task.title} className="task__title" />
-        {task.isRecurring && <span className="badge badge--recurring">recurring</span>}
-        {task.dueDate && <DueDate dueDate={task.dueDate} today={today} />}
+        {task.isRecurring && <span className="task__tag">repeat</span>}
       </div>
+      {task.dueDate ? (
+        <DueDate dueDate={task.dueDate} today={today} />
+      ) : (
+        <span className="task__due task__due--none" aria-hidden="true">
+          —
+        </span>
+      )}
       <div className="task__actions">
         <button
           type="button"
-          className="icon-btn btn-primary"
+          className="icon-btn icon-btn--primary"
           aria-label="Move to Today"
-          title="Move to Today"
+          title="Move to Today (Enter)"
           onClick={() => onAddToday(task.id)}
         >
           <Icon name="arrow-right" />
@@ -272,7 +253,7 @@ function MasterTask({
           type="button"
           className="icon-btn"
           aria-label="Edit"
-          title="Edit"
+          title="Edit (e)"
           onClick={() => setEditing(true)}
         >
           <Icon name="pencil" />

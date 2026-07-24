@@ -1,456 +1,816 @@
+/* ==========================================================================
+   Warm Bauhaus — Direction A, "Grid & Rule".
+   Geometric modernism on warm paper: heavy ink rules build the structure,
+   type sits on a strict grid, and colour shrinks to a single small mark per
+   row. One accent at a time, no ornament.
+   ========================================================================== */
+
 :root {
-  --bg: #f5f5f7;
-  --col-bg: #ffffff;
-  --border: #d9d9de;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --accent: #0b74de;
-  --recurring: #7a3ff2;
-  --recurring-bg: #f3edff;
-  --active-bg: #eef5fe;
-  --done-bg: #eeeef0;
-  --ring: rgba(11, 116, 222, 0.35);
-  --btn-bg: #ffffff;
-  --pill-bg: #eef2f7;
-  --pill-text: #0b74de;
-  /* Destructive action accent (confirm dialogs) */
-  --danger: #c81e1e;
-  /* Due-date urgency (task labels) */
-  --due-overdue: #c81e1e;
-  --due-overdue-bg: #fdeaea;
-  --due-today: #b45309;
-  --due-today-bg: #fdf1e0;
-  --due-soon: #8a6d00;
-  --due-soon-bg: #fbf4d6;
-  /* Sync status dot (header + SyncSettings) */
-  --sync-ok: #1a7f37;
-  --sync-warn: #b45309;
-  --sync-error: #c81e1e;
+  /* The six fixed brand colours. */
+  --paper:     #f6f1e7;
+  --ink:       #1e1c19;
+  --ochre:     #e0a32e;
+  --vermilion: #c0492e;
+  --sage:      #6e8b6a;
+  --blue:      #2c4a7c;
+
+  /* Futura is the Bauhaus face and ships on macOS; the rest are geometric
+     fallbacks. No webfont is loaded, so nothing can silently fail. */
+  --font-display: 'Futura', 'Futura PT', 'Avenir Next', 'Century Gothic',
+                  ui-sans-serif, system-ui, sans-serif;
+  --font-body:    'Avenir Next', 'Avenir', ui-sans-serif, system-ui,
+                  -apple-system, 'Segoe UI', sans-serif;
+  --font-data:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Semantic tokens — every component styles through these, so the dark theme
+     is a token swap rather than a duplicated set of rules. */
+  --bg:          var(--paper);
+  --fg:          var(--ink);
+  --muted:       rgba(30, 28, 25, 0.55);
+  --faint:       rgba(30, 28, 25, 0.34);
+  --rule:        rgba(30, 28, 25, 0.16);
+  --rule-strong: var(--ink);
+  --field-bg:    rgba(255, 255, 255, 0.55);
+  --overlay:     rgba(30, 28, 25, 0.42);
+  --raised:      #fbf8f1;
+  --flash:       rgba(224, 163, 46, 0.42);
+  --active-wash: rgba(192, 73, 46, 0.07);
+
+  --c-master: var(--blue);
+  --c-today:  var(--ochre);
+  --c-done:   var(--sage);
+  --c-active: var(--vermilion);
+  /* Ochre is too light to read as text on paper; this is its ink-safe twin. */
+  --c-today-text: #96690c;
+
+  --focus: var(--blue);
+
   /* Let native controls (date picker, checkbox) follow the theme. */
   color-scheme: light dark;
 }
 
-/* Dark mode via system theme. Every rule references the variables above, so
-   overriding them here flips the whole board (plan §3). */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161618;
-    --col-bg: #242426;
-    --border: #3a3a3d;
-    --text: #f5f5f7;
-    --muted: #9a9aa0;
-    --accent: #4b9bff;
-    --recurring: #b490ff;
-    --recurring-bg: #2f2545;
-    --active-bg: #1c3350;
-    --done-bg: #1d1d1f;
-    --ring: rgba(75, 155, 255, 0.4);
-    --btn-bg: #313134;
-    --pill-bg: #2a3340;
-    --pill-text: #7fb5ff;
-    --danger: #ff8a8a;
-    --due-overdue: #ff8a8a;
-    --due-overdue-bg: #3a1f22;
-    --due-today: #ffc078;
-    --due-today-bg: #3a2c1a;
-    --due-soon: #e6d27a;
-    --due-soon-bg: #322f1c;
-    --sync-ok: #4ac26b;
-    --sync-warn: #ffc078;
-    --sync-error: #ff8a8a;
+    --bg:          #16140f;
+    --fg:          #ede6d6;
+    --muted:       rgba(237, 230, 214, 0.56);
+    --faint:       rgba(237, 230, 214, 0.32);
+    --rule:        rgba(237, 230, 214, 0.17);
+    --rule-strong: rgba(237, 230, 214, 0.82);
+    --field-bg:    rgba(237, 230, 214, 0.06);
+    --overlay:     rgba(0, 0, 0, 0.62);
+    --raised:      #1f1c16;
+    --flash:       rgba(232, 178, 76, 0.3);
+    --active-wash: rgba(224, 103, 74, 0.14);
+
+    --c-master: #6e93c9;
+    --c-today:  #e8b24c;
+    --c-done:   #8fae8a;
+    --c-active: #e0674a;
+    --c-today-text: #e8b24c;
+
+    --focus: #6e93c9;
   }
 }
+
+/* The viewer's explicit choice must beat the OS preference in both directions,
+   so both themes are restated here rather than only the dark one. */
+:root[data-theme='dark'] {
+  --bg:          #16140f;
+  --fg:          #ede6d6;
+  --muted:       rgba(237, 230, 214, 0.56);
+  --faint:       rgba(237, 230, 214, 0.32);
+  --rule:        rgba(237, 230, 214, 0.17);
+  --rule-strong: rgba(237, 230, 214, 0.82);
+  --field-bg:    rgba(237, 230, 214, 0.06);
+  --overlay:     rgba(0, 0, 0, 0.62);
+  --raised:      #1f1c16;
+  --flash:       rgba(232, 178, 76, 0.3);
+  --active-wash: rgba(224, 103, 74, 0.14);
+
+  --c-master: #6e93c9;
+  --c-today:  #e8b24c;
+  --c-done:   #8fae8a;
+  --c-active: #e0674a;
+  --c-today-text: #e8b24c;
+
+  --focus: #6e93c9;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg:          var(--paper);
+  --fg:          var(--ink);
+  --muted:       rgba(30, 28, 25, 0.55);
+  --faint:       rgba(30, 28, 25, 0.34);
+  --rule:        rgba(30, 28, 25, 0.16);
+  --rule-strong: var(--ink);
+  --field-bg:    rgba(255, 255, 255, 0.55);
+  --overlay:     rgba(30, 28, 25, 0.42);
+  --raised:      #fbf8f1;
+  --flash:       rgba(224, 163, 46, 0.42);
+  --active-wash: rgba(192, 73, 46, 0.07);
+
+  --c-master: var(--blue);
+  --c-today:  var(--ochre);
+  --c-done:   var(--sage);
+  --c-active: var(--vermilion);
+  --c-today-text: #96690c;
+
+  --focus: var(--blue);
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------- base --- */
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
-  color: var(--text);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+
+:where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: block;
+}
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -------------------------------------------------------------- header --- */
 
 .app__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: calc(1rem + env(safe-area-inset-top)) calc(1.5rem + env(safe-area-inset-right)) 1rem
-    calc(1.5rem + env(safe-area-inset-left));
+  gap: clamp(0.7rem, 2.5vw, 1.75rem);
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  padding: calc(0.9rem + env(safe-area-inset-top)) calc(1rem + env(safe-area-inset-right)) 0.75rem
+    calc(1rem + env(safe-area-inset-left));
+  border-bottom: 3px solid var(--rule-strong);
+}
+
+.app__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Circle, square, half-round — the app's entire ornament budget. */
+.app__marks {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.app__marks i {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--c-master);
+}
+
+.app__marks i:nth-child(2) {
+  border-radius: 0;
+  background: var(--c-today);
+}
+
+.app__marks i:nth-child(3) {
+  height: 6px;
+  border-radius: 11px 11px 0 0;
+  background: var(--c-active);
 }
 
 .app__header h1 {
   margin: 0;
-  font-size: 1.4rem;
-}
-
-.app__title-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .app__day {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-family: var(--font-data);
+  font-size: 0.72rem;
 }
 
 .app__day-label {
-  color: var(--muted);
-  font-size: 0.9rem;
-  white-space: nowrap;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
+
+.app__day-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.app__progress {
+  flex: 1 1 5rem;
+  max-width: 13rem;
+  height: 4px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.app__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-done);
+  transition: width 0.25s ease-out;
+}
+
+.app__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ------------------------------------------------------------- buttons --- */
+
+.btn {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.8rem;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--rule-strong);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn--quiet {
+  border-color: transparent;
+  color: var(--muted);
+  padding: 0.42rem 0.55rem;
+}
+
+.btn--quiet:hover:not(:disabled) {
+  background: transparent;
+  color: var(--fg);
+}
+
+.btn--small {
+  padding: 0.22rem 0.55rem;
+  font-size: 0.62rem;
+  border-width: 1px;
+}
+
+.btn-primary,
+.btn-danger {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.9rem;
+  border: 2px solid var(--rule-strong);
+  background: var(--fg);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: var(--c-active);
+  border-color: var(--c-active);
+  color: var(--paper);
+}
+
+.btn-primary:disabled,
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.95rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--rule);
+}
+
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icon-btn--primary {
+  color: var(--c-master);
+}
+
+.icon-btn--primary:hover:not(:disabled) {
+  background: var(--c-master);
+  border-color: var(--c-master);
+  color: var(--bg);
+}
+
+/* ---------------------------------------------------------------- menu --- */
+
+.app__menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.app__menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  min-width: 9rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--raised);
+  border: 2px solid var(--rule-strong);
+}
+
+.app__menu-list button {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.app__menu-list button:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.app__sync-indicator {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.sync-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.sync-dot--synced {
+  background: var(--c-done);
+}
+
+.sync-dot--syncing,
+.sync-dot--offline {
+  background: var(--c-today);
+}
+
+.sync-dot--error {
+  background: var(--c-active);
+}
+
+.sync-dot--disconnected {
+  background: var(--faint);
+}
+
+/* --------------------------------------------------------------- board --- */
 
 .board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  padding: 0 1.5rem 2rem;
   align-items: start;
+  /* Rows size to their content instead of sharing out the board's height —
+     without this, a collapsed column leaves its freed space behind as a gap. */
+  align-content: start;
+  flex: 1 1 auto;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* Collapsed Master (plan R2 §1): Master shrinks to a slim rail, Today/Done
-   widen to fill. */
-.board--master-collapsed {
-  grid-template-columns: 44px 1fr 1fr;
-}
-
-/* Below ~900px (e.g. a half-screen window) three columns get too narrow to be
-   usable, so stack them into one. Order by activity: Today first, then Done,
-   then Master last. */
+/* Below the desktop breakpoint the board becomes a single stacked track, so a
+   collapsed column frees vertical space and the ones below flow up to fill it.
+   Above it the three tracks stay fixed, so a collapsed column keeps its slot
+   and the others never move. Same markup, same collapse — the layout differs. */
 @media (max-width: 900px) {
-  .board,
-  .board--master-collapsed {
+  .board {
     grid-template-columns: 1fr;
   }
+}
 
-  .column--today {
-    order: 1;
-  }
+.col {
+  padding: 1.15rem clamp(0.85rem, 2vw, 1.4rem) 2rem;
+  min-width: 0;
+}
 
-  .column--done {
-    order: 2;
-  }
+.col + .col {
+  border-left: 1px solid var(--rule);
+}
 
-  .column--master {
-    order: 3;
-  }
+.col--collapsed {
+  padding-bottom: 0.6rem;
+}
 
-  /* Compact header: title stays on one line (no mid-word wrap), the day
-     label drops its "Day: " prefix and never wraps, and the action buttons
-     wrap to a second row rather than squeezing / breaking mid-word. */
-  .app__header {
+@media (max-width: 900px) {
+  /* Give the field its own line rather than squeezing it. The wrap point is
+     fixed by viewport width, never by focus, so the list below never moves. */
+  .add {
     flex-wrap: wrap;
-    row-gap: 0.35rem;
-    padding: calc(0.75rem + env(safe-area-inset-top)) calc(1rem + env(safe-area-inset-right))
-      0.5rem calc(1rem + env(safe-area-inset-left));
   }
 
-  .app__header h1 {
-    font-size: 1.15rem;
-    white-space: nowrap;
+  .add__input {
+    flex: 1 1 100%;
   }
 
-  .app__title-row {
-    gap: 0.5rem;
-    min-width: 0;
+  .col {
+    padding-bottom: 1.1rem;
   }
 
-  .app__day-label {
-    font-size: 0.8rem;
-  }
-
-  .app__day-label__prefix {
-    display: none;
-  }
-
-  .app__day {
-    gap: 0.4rem;
+  .col + .col {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
   }
 }
 
-.column {
-  background: var(--col-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
-  min-height: 200px;
-}
-
-.column h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-}
-
-.column__placeholder {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.add-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.add-form__title,
-.edit-form input[type='text'] {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-.add-form__row,
-.edit-form__row {
+.col__head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  font-size: 0.85rem;
-  color: var(--muted);
+  gap: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 3px solid var(--rule-strong);
 }
 
-/* Progressive disclosure (task 4): only the "New task…" field shows until the
-   form gains focus; then the due/recurring/add controls unfold below it. */
-.add-form__advanced {
+.col__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.15rem 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* A flat triangle, rotated rather than swapped, so the state reads as motion. */
+.col__chevron {
+  width: 0;
+  height: 0;
+  flex: none;
+  border-left: 6px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transform: rotate(90deg);
+  transition: transform 0.18s ease-out;
+}
+
+.col--collapsed .col__chevron {
+  transform: rotate(0deg);
+}
+
+.col__name {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.col__count {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.col__body {
+  padding-top: 0.1rem;
+}
+
+/* The body is hidden via the `hidden` attribute — keep that authoritative. */
+.col__body[hidden] {
   display: none;
 }
 
-.add-form:focus-within .add-form__advanced {
-  display: block;
+.col__placeholder {
+  margin: 0.9rem 0 0;
+  font-size: 0.88rem;
+  color: var(--faint);
 }
 
-/* One vertically-centred control row so "Due", the quick chips, the date box,
-   the Recurring checkbox and "Add" all sit on a single centre line (task 4). */
-.add-form__advanced .add-form__row {
-  gap: 0.5rem;
+/* Each column owns exactly one hue, so only one accent is ever in play. */
+.col--master .task__mark {
+  background: var(--c-master);
 }
 
-.add-form__label {
-  font-size: 0.85rem;
-  color: var(--muted);
+.col--today .task__mark {
+  background: var(--c-today);
 }
 
-.add-form__quick {
-  display: inline-flex;
-  gap: 0.25rem;
+.col--done .task__mark {
+  background: var(--c-done);
 }
 
-.add-form__chip {
-  padding: 0.2rem 0.55rem;
-  font-size: 0.8rem;
-  line-height: 1.2;
-  border-radius: 999px;
-}
+/* ------------------------------------------------------------ add form --- */
 
-.add-form__chip--active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--active-bg);
-}
-
-.add-form__date {
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  line-height: 1.2;
-  color: var(--text);
-  background: var(--btn-bg);
-}
-
-.add-form__recurring {
-  display: inline-flex;
+/* Nothing here is progressively disclosed: the row's height never changes, so
+   focusing or blurring the field cannot reflow the list underneath and swallow
+   the next click. */
+.add {
+  display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.add__input {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0.35rem 0.1rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  font-size: 0.95rem;
+}
+
+.add__input::placeholder {
+  color: var(--faint);
+}
+
+.add__input:focus {
+  outline: none;
+  border-bottom-color: var(--c-master);
+}
+
+.add__hint {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex: none;
+  font-family: var(--font-data);
+  font-size: 0.66rem;
+}
+
+.add__hint-due {
+  padding: 0.1rem 0.35rem;
+  background: var(--c-master);
+  color: var(--bg);
+  white-space: nowrap;
+}
+
+.add__date {
+  flex: none;
+  width: 6.6rem;
+  padding: 0.2rem 0.25rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.7rem;
   color: var(--muted);
 }
 
-.add-form__recurring input {
-  margin: 0;
+.add__date:disabled {
+  opacity: 0.45;
 }
 
-.add-form__submit {
-  margin-left: auto;
+.add__recur {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
   font-weight: 600;
-}
-
-button {
-  border: 1px solid var(--border);
-  background: var(--btn-bg);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 0.35rem 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--rule);
   cursor: pointer;
-  font-size: 0.85rem;
 }
 
-button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+.add__recur--on {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
 }
 
-button:disabled {
-  opacity: 0.5;
+.add__submit {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  background: var(--c-master);
+  border: 1px solid var(--c-master);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.add__submit:disabled {
+  opacity: 0.3;
   cursor: default;
 }
+
+/* ---------------------------------------------------------------- task --- */
 
 .task-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }
 
 .task {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.2rem 0.6rem;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'mark main    due'
+    '.    subs    subs'
+    '.    actions actions';
   align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  column-gap: 0.55rem;
+  margin-left: -0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
 }
 
-/* Keyboard-focused card (roving focus, plan §2). */
 .task:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--ring);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
-button:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.task__mark {
+  grid-area: mark;
+  width: 9px;
+  height: 9px;
+  justify-self: center;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+/* Square, not round: a recurring master is a template, not an occurrence. */
+.task__mark--recurring {
+  border-radius: 0;
+  background: var(--faint);
+}
+
+.task__main {
+  grid-area: main;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.task__title {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.task__title--done {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.task__tag {
+  flex: none;
+  font-family: var(--font-data);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.task__drag-handle {
+  flex: none;
+  color: var(--faint);
+  cursor: grab;
+  font-size: 0.8rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.task__due {
+  grid-area: due;
+  justify-self: end;
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.task__due--none {
+  color: var(--faint);
+}
+
+.task__due--overdue {
+  color: var(--c-active);
+  font-weight: 700;
+}
+
+.task__due--today {
+  color: var(--c-today-text);
+  font-weight: 700;
+}
+
+.task__due--soon {
+  color: var(--c-today-text);
+}
+
+.task__due--upcoming {
+  color: var(--muted);
+}
+
+.task__due--done {
+  color: var(--faint);
+}
+
+.task__actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
 }
 
 .task--editing {
   display: block;
 }
 
-.task__main {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+/* ----- states ----- */
+
+.task--active {
+  box-shadow: inset 4px 0 0 var(--c-active);
+  background: var(--active-wash);
 }
 
-.task__title {
-  font-weight: 500;
+.task--active .task__mark {
+  background: var(--c-active);
 }
 
-/* URL titles render as a tight, clickable pill of just the domain (task 1). */
-.task__url-pill {
-  display: inline-block;
-  max-width: 100%;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--pill-bg);
-  color: var(--pill-text);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.task--active .task__title,
+.task__title--active {
+  font-weight: 700;
 }
 
-.task__url-pill:hover {
-  text-decoration: underline;
-}
-
-.task__url-pill--active {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.task--done .task__url-pill {
-  opacity: 0.7;
-}
-
-.task__due {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-/* Colour-code by urgency (task 6). Upcoming stays muted; nearer dates get a
-   tinted pill so overdue / due-today jump out. */
-.task__due--overdue,
-.task__due--today,
-.task__due--soon {
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.task__due--overdue {
-  color: var(--due-overdue);
-  background: var(--due-overdue-bg);
-}
-
-.task__due--today {
-  color: var(--due-today);
-  background: var(--due-today-bg);
-}
-
-.task__due--soon {
-  color: var(--due-soon);
-  background: var(--due-soon-bg);
-}
-
-/* Done cards are muted overall — don't let urgency colours shout there. */
-.task--done .task__due {
-  background: none;
-  color: var(--muted);
-  font-weight: 400;
-  padding: 0;
-}
-
-.badge {
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-}
-
-.badge--recurring {
-  background: var(--recurring);
-  color: #fff;
-}
-
-.badge--copy {
-  background: var(--recurring-bg);
-  color: var(--recurring);
-  border: 1px solid var(--recurring);
-}
-
-.btn-primary {
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* Destructive confirm button (see ConfirmDialog). Outline like btn-primary but
-   in the danger colour; the hover override keeps it from turning accent-blue. */
-.btn-danger {
-  border-color: var(--danger);
-  color: var(--danger);
-  font-weight: 600;
-}
-
-.btn-danger:hover:not(:disabled) {
-  border-color: var(--danger);
-  color: var(--danger);
+.task--done .task__title {
+  color: var(--faint);
+  text-decoration: line-through;
 }
 
 .task--today {
@@ -461,256 +821,507 @@ input:focus-visible {
   opacity: 0.4;
 }
 
-/* Active item (SPEC §6.8) — exactly one clearly highlighted task/subtask.
-   A left accent bar (inset shadow, no layout shift) makes "what am I working
-   on" read instantly. */
-.task--active {
-  border-color: var(--accent);
-  background: var(--active-bg);
-  box-shadow: inset 3px 0 0 0 var(--accent), 0 0 0 2px var(--ring);
-}
-
-/* Clickable title used to set/unset active — reset button chrome to look like text. */
-.task__activate,
-.subtask__activate {
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.task__activate {
-  font-weight: 500;
-}
-
-.task__activate:hover:not(:disabled),
-.subtask__activate:hover:not(:disabled) {
-  color: var(--accent);
-  border: none;
-}
-
-.task__title--active,
-.subtask__title--active {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-/* Drag reorder: a single 2px insertion line shows exactly where the card will
-   land — above the target card (cursor in its top half) or, via the trailing
-   drop zone, after the last card. `margin-top: -1px` absorbs the extra border
-   pixel so surrounding cards don't nudge. */
 .task--insert-before {
-  border-top: 2px solid var(--accent);
-  margin-top: -1px;
+  box-shadow: inset 0 3px 0 var(--c-today);
 }
 
 .task-list__end {
   list-style: none;
-  min-height: 1.75rem;
-  border-top: 2px solid transparent;
-  margin-top: -1px;
+  height: 2.5rem;
 }
 
 .task-list__end--active {
-  border-top-color: var(--accent);
+  box-shadow: inset 0 3px 0 var(--c-today);
 }
 
-.task__drag-handle {
-  color: var(--muted);
-  cursor: grab;
-  user-select: none;
+/* The new-task flash: a task sorts into position rather than landing at the
+   bottom, so it gets a brief ochre wash that says "here it is". The inset bar
+   is not part of the animation, so it still marks the task under
+   prefers-reduced-motion. */
+@keyframes task-flash {
+  from {
+    background: var(--flash);
+  }
+  to {
+    background: transparent;
+  }
 }
 
-.task__actions {
+.task--flash {
+  animation: task-flash 1.6s ease-out;
+  box-shadow: inset 3px 0 0 var(--c-today);
+}
+
+.task__url-pill {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.1rem 0.38rem;
+  font-family: var(--font-data);
+  font-size: 0.78rem;
+  color: var(--c-master);
+  border: 1px solid var(--rule);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task__url-pill:hover {
+  border-color: var(--c-master);
+}
+
+.task__url-pill--active {
+  border-color: var(--c-active);
+  color: var(--c-active);
+}
+
+.task--done .task__url-pill {
+  color: var(--faint);
+}
+
+/* Titles that double as the set-active toggle. */
+.task__activate,
+.subtask__activate {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task__activate:hover,
+.subtask__activate:hover {
+  color: var(--c-active);
+}
+
+/* ------------------------------------------------------------ subtasks --- */
+
+.subtasks,
+.task > .subtask-list {
+  grid-area: subs;
+  min-width: 0;
+}
+
+.subtask-list {
+  list-style: none;
+  margin: 0.3rem 0 0.1rem;
+  padding: 0;
+}
+
+.subtask {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
-  flex-shrink: 0;
+  padding: 0.14rem 0;
+  font-size: 0.86rem;
 }
+
+.subtask__check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.subtask__check input[type='checkbox'] {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  accent-color: var(--c-done);
+  cursor: pointer;
+}
+
+.subtask__check input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.subtask__title {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.subtask__title--done {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.subtask__title--active {
+  color: var(--c-active);
+  font-weight: 700;
+}
+
+.subtask__actions {
+  display: flex;
+  gap: 0.05rem;
+  flex: none;
+}
+
+.subtask__actions .icon-btn {
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 0.8rem;
+}
+
+.subtask__edit,
+.subtask-add {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0;
+}
+
+.subtask__edit input,
+.subtask-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.22rem 0.35rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-size: 0.86rem;
+}
+
+.subtask__edit button,
+.subtask-add button {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.24rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.subtask__edit button:hover:not(:disabled),
+.subtask-add button:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.subtask-add button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ----------------------------------------------------------- edit form --- */
 
 .edit-form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  padding: 0.35rem 0;
 }
 
-.column__head {
+.edit-form input[type='text'] {
+  padding: 0.35rem 0.45rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-size: 0.95rem;
+}
+
+.edit-form__row {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.column__head h2 {
-  margin: 0 0 0.75rem;
-}
-
-.task--done {
-  background: var(--done-bg);
-  opacity: 0.75;
-}
-
-.task__title--done {
-  text-decoration: line-through;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
   color: var(--muted);
-  font-weight: 400;
 }
+
+.edit-form__row input[type='date'] {
+  padding: 0.22rem 0.35rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.74rem;
+}
+
+.edit-form__row label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.edit-form .task__actions {
+  display: flex;
+  gap: 0.4rem;
+  opacity: 1;
+}
+
+.edit-form .task__actions button {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  cursor: pointer;
+}
+
+.edit-form .task__actions button[type='submit'] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* ------------------------------------------------------------- history --- */
 
 .history {
-  padding: 0 1.5rem 2rem;
+  border-top: 3px solid var(--rule-strong);
+  padding: 0.9rem calc(1rem + env(safe-area-inset-right)) calc(2.5rem + env(safe-area-inset-bottom))
+    calc(1rem + env(safe-area-inset-left));
+}
+
+.history > button {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.35rem 0;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.history > button:hover {
+  color: var(--fg);
 }
 
 .history__body {
-  margin-top: 0.75rem;
-  background: var(--col-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
-}
-
-.history__day + .history__day {
-  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 0.8rem;
 }
 
 .history__date {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+  margin: 0 0 0.3rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  color: var(--faint);
 }
 
 .history__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
 }
 
 .history__entry {
-  font-size: 0.9rem;
+  padding: 0.12rem 0;
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .history__entry--subtask {
-  padding-left: 1rem;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------- modal surfaces --- */
+
+.shortcut-help__backdrop,
+.confirm-dialog__backdrop,
+.sync-settings__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--overlay);
+}
+
+/* Above the other modals so a prompt raised from one sits on top. */
+.confirm-dialog__backdrop {
+  z-index: 200;
+}
+
+.shortcut-help,
+.confirm-dialog,
+.sync-settings {
+  width: min(30rem, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+  background: var(--raised);
+  border: 3px solid var(--rule-strong);
+}
+
+.shortcut-help__head,
+.sync-settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.shortcut-help__head h2,
+.sync-settings__head h2,
+.confirm-dialog__title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.shortcut-help__head h2,
+.sync-settings__head h2 {
+  margin-bottom: 0;
+}
+
+.shortcut-help__group {
+  margin-bottom: 1rem;
+}
+
+.shortcut-help__group h3 {
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.shortcut-help__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.18rem 0;
+  font-size: 0.87rem;
+}
+
+kbd {
+  padding: 0.1rem 0.4rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.confirm-dialog__body,
+.sync-settings__body {
+  font-size: 0.92rem;
   color: var(--muted);
-  font-size: 0.85rem;
 }
 
-/* Subtasks (SPEC §6.4) */
-.subtasks,
-.subtask-list {
-  flex-basis: 100%;
+.confirm-dialog__body p {
+  margin: 0 0 0.6rem;
 }
 
-.subtask-list {
-  list-style: none;
-  margin: 0.3rem 0 0;
-  padding: 0 0 0 0.25rem;
+.sync-settings__body {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.75rem;
 }
 
-.subtask {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+.sync-settings__body p {
+  margin: 0;
 }
 
-.subtask__check {
+.confirm-dialog__actions,
+.sync-settings__actions {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  flex-wrap: wrap;
+}
+
+.confirm-dialog__actions button:not(.btn-primary):not(.btn-danger),
+.sync-settings__actions button:not(.btn-primary):not(.btn-danger) {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.9rem;
+  background: transparent;
+  border: 2px solid var(--rule-strong);
   cursor: pointer;
 }
 
-.subtask__title--done {
-  text-decoration: line-through;
+.sync-settings__form {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.2rem 0;
+}
+
+.sync-settings__form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  background: var(--field-bg);
+  border: 1px solid var(--rule);
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+}
+
+.sync-settings__status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.sync-settings__error {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--c-active);
+  color: var(--c-active);
+  font-size: 0.84rem;
+}
+
+.sync-settings__note {
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
-.subtask__actions {
-  display: flex;
-  gap: 0.25rem;
-  flex-shrink: 0;
+.sync-settings__token-link,
+.sync-settings__gist-link {
+  font-size: 0.82rem;
+  color: var(--c-master);
+  text-decoration: none;
 }
 
-.subtask__actions button {
-  padding: 0.15rem 0.4rem;
-  font-size: 0.75rem;
+.sync-settings__token-link:hover,
+.sync-settings__gist-link:hover {
+  text-decoration: underline;
 }
 
-.subtask__edit {
-  display: flex;
-  gap: 0.3rem;
-  width: 100%;
-}
+/* ------------------------------------------------- pointer capabilities --- */
 
-.subtask__edit input[type='text'] {
-  flex: 1;
-  padding: 0.3rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-
-.subtask-add {
-  display: flex;
-  gap: 0.3rem;
-  margin-top: 0.3rem;
-  padding-left: 0.25rem;
-}
-
-.subtask-add input[type='text'] {
-  flex: 1;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.8rem;
-}
-
-/* ── Icon action buttons (plan §1) ─────────────────────────────────────── */
-/* Compact square buttons; text label lives in aria-label + title. */
-.icon-btn {
-  min-width: 1.9rem;
-  padding: 0.25rem 0.4rem;
-  line-height: 1;
-  font-size: 0.95rem;
-}
-
-.icon {
-  display: block;
-  margin: 0 auto;
-}
-
-.icon-btn.btn-primary {
-  font-weight: 600;
-}
-
-.subtask__actions .icon-btn {
-  min-width: auto;
-  padding: 0.15rem 0.35rem;
-  font-size: 0.8rem;
-}
-
-/* Hover/focus reveal: only on devices that actually hover (desktop). On touch
-   (future iPhone) the @media guard is false, so actions stay visible. Editing
-   cards are excluded so the Save/Cancel row is never hidden.
-
-   .task__actions is lifted out of flow into a top-right overlay so cards
-   shrink to their content instead of every card reserving a permanent band
-   of empty space for the (usually invisible) action row. The overlay sits
-   inside the card's own padded box (not viewport-fixed), so it can never be
-   clipped by a column/list ancestor. Hidden state uses opacity+pointer-events
-   (not visibility) so :focus-within reveal still works for keyboard users —
-   the card itself is tabIndex=0, so focus lands on .task before the user
-   tabs into the buttons, and pointer-events: none keeps invisible buttons
-   from being clickable while opacity is 0. */
+/* On devices that hover, the actions lift out of the grid into a corner
+   overlay: being absolutely positioned they occupy no layout space at all, so
+   revealing them can never reflow the row (or the list) under a pointer that
+   is already moving toward them — and titles get the full column width.
+   Up/down are dead weight here; desktop reorders by dragging. */
 @media (hover: hover) {
   .task:not(.task--editing) {
     position: relative;
@@ -718,22 +1329,20 @@ input:focus-visible {
 
   .task:not(.task--editing) .task__actions {
     position: absolute;
-    top: 0.35rem;
-    right: 0.35rem;
+    top: 0.2rem;
+    right: 0.3rem;
     z-index: 1;
-    padding: 0.2rem 0.3rem;
-    background: var(--col-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 0.1rem 0.15rem;
+    background: var(--bg);
+    border: 1px solid var(--rule);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.12s ease;
+    transition: opacity 0.12s ease-out;
   }
 
   .task:not(.task--editing) .subtask__actions {
     opacity: 0;
-    transition: opacity 0.12s ease;
+    transition: opacity 0.12s ease-out;
   }
 
   .task:not(.task--editing):hover .task__actions,
@@ -747,482 +1356,41 @@ input:focus-visible {
     opacity: 1;
   }
 
-  /* Move up/down is a touch-only affordance; desktop reorders by drag. */
   .task__move {
     display: none;
   }
 }
 
-/* Touch devices get no HTML5 drag-and-drop and no hover, so the drag handle is
-   dead weight — hide it and let the Move up/down buttons do the reordering.
-   Bump the icon buttons to a comfortable tap target while we're here. Actions
-   stay in-flow and always visible (no hover to reveal them on touch), but
-   with a tighter gap to keep the row compact. */
+/* Touch gets no HTML5 drag-and-drop and no hover: drop the drag handle, keep
+   the actions permanently visible, and give them a real tap target. */
 @media (hover: none) {
   .task__drag-handle {
     display: none;
   }
 
   .icon-btn {
-    min-width: 2.5rem;
-    min-height: 2.5rem;
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .subtask__actions .icon-btn {
+    width: 2rem;
+    height: 2rem;
   }
 
   .task__actions {
-    gap: 0.3rem;
+    gap: 0.2rem;
   }
 }
 
-/* ── Shortcut cheatsheet overlay (plan §2) ─────────────────────────────── */
-.shortcut-help__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 100;
-}
+/* -------------------------------------------------------------- motion --- */
 
-.shortcut-help {
-  background: var(--col-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem 1.5rem;
-  max-width: 460px;
-  width: 100%;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-}
-
-.shortcut-help__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.shortcut-help__head h2 {
-  margin: 0;
-  font-size: 1.15rem;
-}
-
-.shortcut-help__group + .shortcut-help__group {
-  margin-top: 1rem;
-}
-
-.shortcut-help__group h3 {
-  margin: 0 0 0.4rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.shortcut-help__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.2rem 0;
-  font-size: 0.9rem;
-}
-
-kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  padding: 0.1rem 0.4rem;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-/* ── In-app confirm / alert dialog (replaces native browser prompts) ───── */
-.confirm-dialog__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  /* Above the sync/shortcut modals so a prompt raised from one sits on top. */
-  z-index: 200;
-}
-
-.confirm-dialog {
-  background: var(--col-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem 1.5rem;
-  max-width: 420px;
-  width: 100%;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-}
-
-.confirm-dialog__title {
-  margin: 0 0 0.75rem;
-  font-size: 1.15rem;
-}
-
-.confirm-dialog__body {
-  color: var(--text);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.confirm-dialog__body p {
-  margin: 0 0 0.6rem;
-}
-
-.confirm-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-}
-
-/* Header hint button that opens the cheatsheet. */
-.app__help {
-  font-weight: 600;
-}
-
-/* Overflow menu holding the less-used Export/Import actions. */
-.app__menu {
-  position: relative;
-  display: inline-flex;
-}
-
-.app__menu-btn {
-  font-weight: 600;
-  line-height: 1;
-}
-
-.app__menu-list {
-  position: absolute;
-  top: calc(100% + 0.35rem);
-  right: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  min-width: 8rem;
-  padding: 0.25rem;
-  gap: 0.15rem;
-  background: var(--btn-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-}
-
-.app__menu-list button {
-  border: none;
-  background: none;
-  text-align: left;
-  border-radius: 6px;
-  padding: 0.4rem 0.6rem;
-}
-
-.app__menu-list button:hover:not(:disabled) {
-  background: var(--active-bg);
-}
-
-/* ── Collapsed Master rail (plan R2 §1) ────────────────────────────────── */
-.column--collapsed {
-  padding: 0.75rem 0.2rem;
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* The whole rail is one tall click target: vertical label + expand chevron. */
-.column__expand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  border: none;
-  background: none;
-  padding: 0.5rem 0;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 1.05rem;
-}
-
-.column__expand:hover:not(:disabled) {
-  color: var(--accent);
-  border: none;
-}
-
-.column__rail-label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: 0.06em;
-  color: var(--text);
-}
-
-.column__expand:hover .column__rail-label {
-  color: var(--accent);
-}
-
-/* Collapse chevron in the expanded Master header. */
-.column__collapse {
-  min-width: auto;
-  padding: 0.15rem 0.45rem;
-  color: var(--muted);
-}
-
-/* When columns stack vertically (below 900px) a collapsed Master becomes a
-   short horizontal bar with the label read normally — the vertical side rail
-   only makes sense when columns sit side by side. This block lives after the
-   base collapsed-rail rules so it wins on source order (media queries add no
-   specificity of their own). */
-@media (max-width: 900px) {
-  .column--collapsed {
-    min-height: 0;
-    padding: 0.5rem 1rem;
-  }
-
-  .column__expand {
-    flex-direction: row;
-    justify-content: center;
-    padding: 0.35rem 0;
-  }
-
-  .column__rail-label {
-    writing-mode: horizontal-tb;
-    text-orientation: mixed;
-  }
-}
-
-/* ── Sync (gist sync UI) ───────────────────────────────────────────────── */
-
-/* Quiet header dot: only shown while connected or on error (App.tsx). */
-.app__sync-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: auto;
-  padding: 0.35rem;
-  line-height: 1;
-}
-
-.sync-dot {
-  display: inline-block;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.sync-dot--synced {
-  background: var(--sync-ok);
-}
-
-.sync-dot--syncing,
-.sync-dot--offline {
-  background: var(--sync-warn);
-}
-
-.sync-dot--error {
-  background: var(--sync-error);
-}
-
-.sync-dot--disconnected {
-  background: var(--muted);
-}
-
-.sync-settings__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 100;
-}
-
-.sync-settings {
-  background: var(--col-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem 1.5rem;
-  max-width: 440px;
-  width: 100%;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-}
-
-.sync-settings__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.sync-settings__head h2 {
-  margin: 0;
-  font-size: 1.15rem;
-}
-
-.sync-settings__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-}
-
-.sync-settings__body p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.sync-settings__token-link,
-.sync-settings__gist-link {
-  color: var(--accent);
-  font-size: 0.85rem;
-  text-decoration: none;
-}
-
-.sync-settings__token-link:hover,
-.sync-settings__gist-link:hover {
-  text-decoration: underline;
-}
-
-.sync-settings__form {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.sync-settings__form input {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  background: var(--btn-bg);
-  color: var(--text);
-}
-
-.sync-settings__status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text);
-}
-
-.sync-settings__actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.sync-settings__note {
-  font-size: 0.8rem;
-}
-
-.sync-settings__error {
-  color: var(--due-overdue);
-  background: var(--due-overdue-bg);
-  border-radius: 8px;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.85rem;
-}
-
-/* ── Mobile quick-add (FAB + panel) ────────────────────────────────────── */
-/* Desktop already has MasterColumn's own "New task…" field in view, so the
-   FAB only appears in the stacked mobile layout (@media max-width: 900px,
-   above) where Master — and its add form — sits at the bottom of the scroll.
-   Hidden here by default so it can never appear above that breakpoint. */
-.quick-add-fab {
-  display: none;
-  position: fixed;
-  right: calc(1rem + env(safe-area-inset-right));
-  bottom: calc(1rem + env(safe-area-inset-bottom));
-  width: 3.25rem;
-  height: 3.25rem;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  z-index: 60;
-}
-
-.quick-add-fab:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  opacity: 0.9;
-}
-
-.quick-add-fab .icon {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.quick-add__backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-  z-index: 55;
-}
-
-/* The panel sits directly above the FAB so opening it reads as one motion. */
-.quick-add {
-  display: none;
-  position: fixed;
-  left: calc(1rem + env(safe-area-inset-left));
-  right: calc(1rem + env(safe-area-inset-right));
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
-  z-index: 60;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem;
-  background: var(--col-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
-}
-
-.quick-add__input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  background: var(--btn-bg);
-  color: var(--text);
-}
-
-.quick-add__close {
-  min-width: auto;
-}
-
-/* Master's own "New task…" field sits at the bottom of the stacked mobile
-   scroll (order 3, below Today/Done) — the FAB gives one-tap access without
-   scrolling the whole page. This override must come after the base
-   `display: none` rules above (equal specificity — plain media queries add
-   none of their own — so source order decides, and this block needs to win). */
-@media (max-width: 900px) {
-  .quick-add-fab {
-    display: flex;
-  }
-
-  .quick-add,
-  .quick-add__backdrop {
-    display: flex;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
