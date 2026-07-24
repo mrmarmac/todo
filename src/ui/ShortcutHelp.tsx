@@ -10,9 +10,19 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     title: 'Global',
     rows: [
       ['n', 'Focus the “New task” field'],
-      ['m', 'Collapse / expand the Master column'],
+      ['1 / 2 / 3', 'Collapse / expand Master, Today, Done'],
       ['?', 'Toggle this cheatsheet'],
       ['Esc', 'Close / cancel'],
+    ],
+  },
+  {
+    title: 'Typing a due date (in the “New task” field)',
+    rows: [
+      ['today · tomorrow', 'Due today / tomorrow'],
+      ['mon … sun', 'The next such weekday'],
+      ['+3d · +2w', 'Three days / two weeks out'],
+      ['2026-08-01', 'An exact date'],
+      ['Friday.', 'Add a full stop to keep a date word in the title'],
     ],
   },
   {
