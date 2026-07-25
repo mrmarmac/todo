@@ -12,6 +12,8 @@ npm run lint      # eslint (D47) — react-hooks rules are the point of it
 npm run build     # tsc + vite build
 ```
 CI runs lint + test + build on every PR and gates the Pages deploy (D48).
+Web sessions install deps via a SessionStart hook (`.claude/hooks/session-start.sh`,
+D49), so `npm test` works on the first call — no manual `npm install` needed.
 
 ## Architecture
 **Strict two-layer split** (D10): business logic lives in `src/core/`, the React shell in `src/ui/` is a thin renderer only. Never put business logic in UI components.
