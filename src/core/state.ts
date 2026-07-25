@@ -359,6 +359,84 @@ export function clearDone(state: AppState, now: Date): AppState {
   };
 }
 
+/** Editable fields of a logged History entry (see {@link updateHistoryEntry}). */
+export interface UpdateHistoryEntryPatch {
+  title?: string;
+}
+
+/**
+ * Correct the title of a logged History entry (D50).
+ *
+ * Only the title is editable. Everything else on the entry — `day`,
+ * `completedAt`, `occurrenceType`, and the id links back to the task it came
+ * from — is the record of *when and what kind of* occurrence happened; changing
+ * those would not be fixing a typo, it would be rewriting the log. The title is
+ * the only field the panel actually shows, and the only one a user can be wrong
+ * about.
+ *
+ * Rejects an empty/whitespace title, matching the task and subtask title rule
+ * (D11). No-op for an unknown id.
+ */
+export function updateHistoryEntry(
+  state: AppState,
+  id: string,
+  patch: UpdateHistoryEntryPatch,
+): AppState {
+  const history = state.history.map((entry) => {
+    if (entry.id !== id) return entry;
+    const next: HistoryEntry = { ...entry };
+    if (patch.title !== undefined) {
+      const title = patch.title.trim();
+      if (title === '') throw new Error('History entry title is required');
+      next.title = title;
+    }
+    return next;
+  });
+  return { ...state, history };
+}
+
+/**
+ * The entries {@link deleteHistoryEntry} would remove for `id`: the entry
+ * itself, plus — for a `task` entry — the `subtask` entries logged under it.
+ *
+ * Exported so the UI can name the collateral in its confirmation prompt instead
+ * of deleting more than the row that was clicked. Returns an empty array for an
+ * unknown id.
+ */
+export function historyDeletionScope(state: AppState, id: string): HistoryEntry[] {
+  const entry = state.history.find((e) => e.id === id);
+  if (!entry) return [];
+  if (entry.occurrenceType !== 'task') return [entry];
+
+  // Subtask entries point at their parent *task's* id, not at the parent
+  // entry's id, so match on that. Also matching the day keeps the scope tight
+  // if a task id ever recurs across days.
+  return state.history.filter(
+    (e) =>
+      e.id === entry.id ||
+      (e.occurrenceType === 'subtask' &&
+        e.parentTaskId === entry.taskId &&
+        e.day === entry.day),
+  );
+}
+
+/**
+ * Delete a logged History entry (D50). Deleting a `task` entry cascades to the
+ * `subtask` entries logged under it — a subtask occurrence is never independent
+ * of its parent (SPEC §6.4), so leaving the children behind would strand
+ * indented rows under a parent that no longer exists. Deleting a `subtask`
+ * entry removes only that entry.
+ *
+ * No-op for an unknown id.
+ */
+export function deleteHistoryEntry(state: AppState, id: string): AppState {
+  const doomed = historyDeletionScope(state, id);
+  if (doomed.length === 0) return state;
+
+  const ids = new Set(doomed.map((e) => e.id));
+  return { ...state, history: state.history.filter((e) => !ids.has(e.id)) };
+}
+
 /** Days of History kept by {@link pruneHistory}. */
 export const HISTORY_RETENTION_DAYS = 30;
 

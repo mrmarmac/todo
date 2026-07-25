@@ -100,10 +100,15 @@ Marking a task complete (allowed only when all its subtasks are complete):
 - Clears active status if it was the active item.
 - It remains in Done until collapsed.
 
-**Undo:** a task in Done can be un-completed, returning it to the end of Today. Once cleared to History, completion is final.
+**Undo:** a task in Done can be un-completed, returning it to the end of Today. Once cleared to History, completion is final — a logged entry can be corrected or deleted (§6.6), but it never returns to a column.
 
 ### 6.6 Collapse to History
 A **Clear** button moves all currently completed tasks — and their completed subtasks — from Done into History. Independent of Start New Day and repeatable any number of times per day. Clear only ever acts on a completed subtask together with its completed parent.
+
+**Editing a logged entry.** A History entry can be corrected or removed, opened by clicking the row (mouse), pressing and holding it (touch), or pressing Enter with it focused (D50):
+- **Edit** changes the entry's title only. Its day and completion timestamp are the record of when the occurrence happened and are not editable.
+- **Delete** removes the entry after an explicit confirmation. Deleting a task entry also removes the completed-subtask entries logged under it, since a subtask occurrence is never independent of its parent (§6.4). Deleting a subtask entry leaves its parent alone.
+- Neither action restores a task to a column — History is a log of what happened, and editing it is for fixing the log, not for undoing a completion.
 
 ### 6.7 Start New Day
 In order:
@@ -144,7 +149,7 @@ Three columns: Master, Today, Done. Visual states:
 - Completed task/subtask — greyed with strikethrough.
 - Recurring master — visually distinct from normal master tasks.
 
-History: minimal read-only panel behind a toggle button, entries grouped by day, newest day first.
+History: minimal panel behind a toggle button, entries grouped by day, newest day first. Entries read as plain text and open an inline title editor (with Delete) on click / long press (§6.6).
 
 Interactions: click to move task from Master→Today, remove control on Today tasks, drag to reorder within Today, Clear button, Start New Day button, set/unset active, undo completion.
 
@@ -168,6 +173,7 @@ Interactions: click to move task from Master→Today, remove control on Today ta
 12. Full app state exports to JSON and restores via import.
 13. Completions can be undone (Done→Today; subtask un-tick while the parent is in Today) until cleared to History; Today tasks can be manually returned to Master.
 14. Cross-device sync (§12) reflects local edits to the connected gist within a few seconds, applies remote edits made on another device, and prompts before either side is overwritten when both changed since the last sync.
+15. History entries can be retitled or deleted in place (click / long press), with a task entry's deletion taking its logged subtasks with it.
 
 ## 12. Cross-Device Sync
 

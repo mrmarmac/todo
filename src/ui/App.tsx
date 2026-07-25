@@ -19,6 +19,9 @@ import {
   setActive,
   setActiveSubtask,
   startNewDay,
+  updateHistoryEntry,
+  deleteHistoryEntry,
+  historyDeletionScope,
   toISODate,
 } from '../core/state';
 import { dayProgress } from '../core/progress';
@@ -250,6 +253,30 @@ export function App() {
     if (ok) setState((s) => startNewDay(s, new Date()));
   };
 
+  // Deleting from History is unrecoverable — the entry is the only record left
+  // of that occurrence — so it confirms, and the prompt names the completed
+  // subtasks that go with a parent (D50) rather than removing them silently.
+  const handleDeleteHistoryEntry = async (id: string) => {
+    const doomed = historyDeletionScope(state, id);
+    if (doomed.length === 0) return;
+    const [entry] = doomed;
+    const subtaskCount = doomed.length - 1;
+    const ok = await confirm({
+      title: 'Delete this History entry?',
+      body:
+        `“${entry.title}” will be removed from History.` +
+        (subtaskCount > 0
+          ? ` Its ${subtaskCount} completed subtask${subtaskCount === 1 ? '' : 's'} ` +
+            'will be removed with it.'
+          : '') +
+        '\n\nThis cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (ok) setState((s) => deleteHistoryEntry(s, id));
+  };
+
   const masterCount = state.tasks.filter((t) => t.column === 'master').length;
   const todayCount = state.tasks.filter((t) => t.column === 'today').length;
   const doneCount = state.tasks.filter((t) => t.column === 'done').length;
@@ -452,7 +479,11 @@ export function App() {
         </Column>
       </main>
 
-      <HistoryPanel history={state.history} />
+      <HistoryPanel
+        history={state.history}
+        onUpdateEntry={(id, patch) => setState((s) => updateHistoryEntry(s, id, patch))}
+        onDeleteEntry={handleDeleteHistoryEntry}
+      />
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
