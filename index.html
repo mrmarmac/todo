@@ -8,6 +8,10 @@
     <meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Without an explicit icon the browser probes /favicon.ico on every load
+         and 404s; this also points the tab at the real app icon rather than a
+         blank page glyph. Vite rewrites the path for the /todo/ base. -->
+    <link rel="icon" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>To-Do</title>
   </head>
