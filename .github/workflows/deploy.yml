@@ -20,6 +20,10 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      # Gate the deploy on the suite. Without this a commit that breaks the
+      # core ships to Pages and the app is where you find out.
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

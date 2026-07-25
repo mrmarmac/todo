@@ -259,6 +259,18 @@ body {
   gap: 0.35rem;
 }
 
+/* Persistence is the product, so a storage failure gets a full-width vermilion
+   band under the header rather than a quiet corner notice (D41). */
+.app__storage-warning {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-bottom: 2px solid var(--c-active);
+  background: var(--active-wash);
+  color: var(--c-active);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+
 /* ------------------------------------------------------------- buttons --- */
 
 .btn {

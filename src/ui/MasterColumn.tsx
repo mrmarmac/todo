@@ -37,6 +37,14 @@ export function MasterColumn({
   subtaskHandlers,
 }: Props) {
   const masterTasks = sortMaster(tasks.filter((t) => t.column === 'master'));
+  // Ids of the recurring masters already represented in Today by a day-copy, so
+  // their rows can disable "Move to Today" rather than offering a click that
+  // core no-ops (D43). Built once per render instead of scanning per row.
+  const copiedMasterIds = new Set(
+    tasks.flatMap((t) =>
+      t.column === 'today' && t.sourceTaskId !== null ? [t.sourceTaskId] : [],
+    ),
+  );
 
   return (
     <>
@@ -50,6 +58,7 @@ export function MasterColumn({
             key={task.id}
             task={task}
             today={today}
+            alreadyInToday={copiedMasterIds.has(task.id)}
             flash={task.id === flashId}
             onUpdate={onUpdate}
             onDelete={onDelete}
@@ -154,6 +163,7 @@ function AddTaskForm({
 function MasterTask({
   task,
   today,
+  alreadyInToday,
   flash,
   onUpdate,
   onDelete,
@@ -162,6 +172,8 @@ function MasterTask({
 }: {
   task: Task;
   today: string;
+  /** Recurring master whose day-copy is already in Today (D43). */
+  alreadyInToday: boolean;
   flash: boolean;
   onUpdate: (id: string, patch: UpdateTaskPatch) => void;
   onDelete: (id: string) => void;
@@ -192,7 +204,7 @@ function MasterTask({
     if (!isCardTarget(e)) return;
     if (e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
-      onAddToday(task.id);
+      if (!alreadyInToday) onAddToday(task.id);
     } else if (e.key === 'e') {
       e.preventDefault();
       setEditing(true);
@@ -234,8 +246,9 @@ function MasterTask({
         <button
           type="button"
           className="icon-btn icon-btn--primary"
+          disabled={alreadyInToday}
           aria-label="Move to Today"
-          title="Move to Today (Enter)"
+          title={alreadyInToday ? 'Already in Today' : 'Move to Today (Enter)'}
           onClick={() => onAddToday(task.id)}
         >
           <Icon name="arrow-right" />

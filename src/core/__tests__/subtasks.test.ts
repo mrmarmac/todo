@@ -178,7 +178,7 @@ describe('uncompleteSubtask (D5)', () => {
 
 describe('parent completion gate (SPEC §6.4, D11) — real subtasks', () => {
   it('blocks completion while a subtask added via addSubtask is open', () => {
-    let s = addSubtask(stateWith([task({ id: 'a', column: 'today' })]), 'a', 'sub');
+    const s = addSubtask(stateWith([task({ id: 'a', column: 'today' })]), 'a', 'sub');
     expect(() => completeTask(s, 'a')).toThrow();
   });
 

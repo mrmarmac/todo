@@ -48,27 +48,31 @@ describe('complete → undo restores the exact Today order for a middle task', (
   });
 });
 
-describe('recurring-copy reverse-find removes the newest copy', () => {
-  it('removes only the second copy when the same master was added twice', () => {
+describe('recurring-copy reverse-find locates the copy to undo', () => {
+  // This used to exercise picking the *newest* of two copies of the same
+  // master. D43 made that state unreachable — moveToToday now refuses a second
+  // copy while one is in Today — so the case under test is the single copy,
+  // plus the guard that keeps it single.
+  it('finds the one copy and removes it, leaving the master in Master', () => {
     let s = initialState(new Date('2026-07-10T09:00:00Z'));
     s = createTask(s, { title: 'Standup', isRecurring: true });
     const masterId = s.tasks[0].id;
 
-    s = moveToToday(s, masterId); // copy #1
-    s = moveToToday(s, masterId); // copy #2 (newest)
+    s = moveToToday(s, masterId);
+    const blocked = moveToToday(s, masterId); // D43: no-op, not a second copy
+    expect(blocked).toBe(s);
 
     const copies = s.tasks.filter((t) => t.column === 'today' && t.sourceTaskId === masterId);
-    expect(copies).toHaveLength(2);
-    const newest = copies[copies.length - 1];
+    expect(copies).toHaveLength(1);
 
     // The undo closure's reverse-find over all tasks.
-    const found = [...s.tasks].reverse().find((t) => t.column === 'today' && t.sourceTaskId === masterId);
-    expect(found!.id).toBe(newest.id);
+    const found = [...s.tasks]
+      .reverse()
+      .find((t) => t.column === 'today' && t.sourceTaskId === masterId);
+    expect(found!.id).toBe(copies[0].id);
 
     const undone = removeFromToday(s, found!.id);
-    const remaining = undone.tasks.filter((t) => t.column === 'today' && t.sourceTaskId === masterId);
-    expect(remaining).toHaveLength(1);
-    expect(remaining[0].id).not.toBe(newest.id);
+    expect(undone.tasks.filter((t) => t.column === 'today')).toHaveLength(0);
     // The recurring master itself is untouched.
     expect(undone.tasks.find((t) => t.id === masterId)!.column).toBe('master');
   });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 
 /** Options describing one confirm/alert prompt (see {@link useConfirm}). */
 export interface ConfirmOptions {
@@ -39,6 +40,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
 
   // Focus the safest button on open; restore prior focus on close.
   useEffect(() => {
@@ -67,7 +70,7 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-label={title}
     >
-      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-dialog" ref={panelRef} onClick={(e) => e.stopPropagation()}>
         <h2 className="confirm-dialog__title">{title}</h2>
         <div className="confirm-dialog__body">
           {paragraphs.map((para, i) => (

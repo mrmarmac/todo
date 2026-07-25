@@ -8,8 +8,12 @@ Personal PWA todo app: three-column board (Master → Today → Done) with Histo
 npm run dev       # dev server (Vite)
 npm test          # run unit tests (Vitest, no watch)
 npm run test:watch
+npm run lint      # eslint (D47) — react-hooks rules are the point of it
 npm run build     # tsc + vite build
 ```
+CI runs lint + test + build on every PR and gates the Pages deploy (D48).
+Web sessions install deps via a SessionStart hook (`.claude/hooks/session-start.sh`,
+D49), so `npm test` works on the first call — no manual `npm install` needed.
 
 ## Architecture
 **Strict two-layer split** (D10): business logic lives in `src/core/`, the React shell in `src/ui/` is a thin renderer only. Never put business logic in UI components.
@@ -19,6 +23,7 @@ src/
   core/
     types.ts          # All types: Task, Subtask, HistoryEntry, AppState
     state.ts          # All pure state-mutation functions (createTask, completeTask, etc.)
+    safeStorage.ts    # Non-throwing localStorage wrapper + failure subscription (D41)
     storage.ts        # localStorage load/save + isAppState validator
     sort.ts           # Master sort order (due-date, no-date, recurring last)
     taskInput.ts      # Trailing date-token parser for title field (D36)
@@ -46,6 +51,8 @@ src/
     Icon.tsx          # Inline SVG icon set
     SyncSettings.tsx  # Sync… dialog
     useGistSync.ts    # Sync hook (push-on-change, pull-on-load/focus)
+    useTheme.ts       # Light/dark/system toggle — sets documentElement.dataset.theme (D45)
+    useFocusTrap.ts   # Tab containment for the three modals (D46)
     cardKeys.ts       # Card keyboard nav: roving arrow focus, delete key
     styles.css        # All styles — "warm Bauhaus" visual system (D34)
 ```
@@ -64,21 +71,25 @@ src/
   - Empty titles still **throw** in all of them, matching D11's title rule.
 - `setActive` / `setActiveSubtask` are **no-ops** (not throws) for unknown id or item not in Today (D13).
 - A recurring task **stays in Master** when added to Today; Today gets a day-copy (`sourceTaskId` set, `isRecurring: false`). Day-copies reset subtask completion on creation (D19).
+  - Only **one live day-copy at a time** — `moveToToday` no-ops while `hasDayCopyInToday` is true, and the Master `→` button is disabled to match (D43).
+  - `deleteTask` **cascades** to day-copies (D42) — an orphan with a dangling `sourceTaskId` would be silently destroyed by `removeFromToday` instead of returning to Master.
+- History is pruned to 30 days by `startNewDay`, measured from the newest logged `day` (never wall-clock — `currentDay` is manual, D3/D44).
+- `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
 - `startNewDay`: collapses Done → History (old day), discards unfinished recurring day-copies, returns remaining Today → Master, clears active, advances `currentDay` (D15).
 - Row actions (edit/delete/etc.) on hover-capable devices are absolutely positioned (no layout slot) to prevent reflow (D40). Add form height is always constant — no `:focus-within` expansion (D35).
 
 ## Constraints
-- **Approved deps only** (D1): `react`, `react-dom`, `typescript`, `vite`, `@vitejs/plugin-react`, `vitest`. Anything else needs explicit approval.
+- **Approved deps only** (D1, amended by D47): `react`, `react-dom`, `typescript`, `vite`, `@vitejs/plugin-react`, `vitest`, plus dev-only `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`. Anything else needs explicit approval.
 - No webfont loaded — type stack is Futura (macOS system) with geometric fallbacks (D34). Don't add `@import` for fonts.
 - PWA is hand-rolled (`public/sw.js`, `public/manifest.webmanifest`) — no Vite PWA plugin (D17).
-- localStorage keys: `todo-pwa/state/v1` (app state, `core/storage.ts`), `todo-pwa/sync/v1` (sync config **including the GitHub token** — D32, `core/gistSync.ts`), `todo-pwa/sync/dirty/v1` (dirty flag — D33, `ui/useGistSync.ts`).
+- localStorage keys: `todo-pwa/state/v1` (app state, `core/storage.ts`), `todo-pwa/sync/v1` (sync config **including the GitHub token** — D32, `core/gistSync.ts`), `todo-pwa/sync/dirty/v1` (dirty flag — D33, `ui/useGistSync.ts`), `todo-pwa/theme/v1` (theme preference — D45, `ui/useTheme.ts`).
 
 ## Visual system (D34)
 "Warm Bauhaus" — edits to `styles.css` should follow this:
 - Palette: paper `#F6F1E7`, ink `#1E1C19`, ochre `#E0A32E`, vermilion `#C0492E`, sage `#6E8B6A`, blue `#2C4A7C`.
 - Column colours: Master = blue, Today = ochre, Done = sage. Vermilion = active item + overdue.
-- Theming has **three** blocks in `styles.css` that must stay in sync when adding a colour var: `@media (prefers-color-scheme: dark)`, `:root[data-theme='dark']`, and `:root[data-theme='light']` (the manual toggle must win over the system preference in both directions).
+- Theming has **three** blocks in `styles.css` that must stay in sync when adding a colour var: `@media (prefers-color-scheme: dark)`, `:root[data-theme='dark']`, and `:root[data-theme='light']` (the manual toggle in `ui/useTheme.ts` must win over the system preference in both directions — D45).
 - Tasks are rows on ruled paper, not cards. One 9px colour mark per row (circle = task, square = recurring).
 
 ## Verifying a change
