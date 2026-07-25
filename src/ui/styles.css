@@ -1145,6 +1145,50 @@ body {
   color: var(--faint);
 }
 
+/* The row reads as text and behaves as a button (D50): a real <button> so
+   keyboard and screen readers get activation for free, stripped back to the
+   plain rule-paper line it replaces. */
+.history__entry-btn {
+  display: block;
+  width: 100%;
+  padding: 0.06rem 0.25rem;
+  margin-left: -0.25rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* A long press must not raise iOS's selection callout over the editor it is
+     about to open. */
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition: background-color 0.12s ease-out;
+}
+
+/* Restrained on purpose: no other row in the app fills on hover (task rows
+   reveal their actions instead), so the text darkening carries most of it. */
+.history__entry-btn:hover {
+  color: var(--fg);
+  background: var(--raised);
+}
+
+/* Held, not yet long enough — the only feedback touch gets that the gesture
+   is being recognised at all. */
+.history__entry-btn--pressing {
+  background: var(--rule);
+  color: var(--fg);
+}
+
+.history__entry--editing {
+  padding: 0.2rem 0;
+}
+
+.history__entry--editing .edit-form {
+  gap: 0.35rem;
+}
+
 /* ------------------------------------------------------- modal surfaces --- */
 
 .shortcut-help__backdrop,
@@ -1392,6 +1436,12 @@ kbd {
 
   .task__actions {
     gap: 0.2rem;
+  }
+
+  /* A long press needs something to press: History rows are one line of small
+     text, which is a poor target to hold accurately (D50). */
+  .history__entry-btn {
+    padding: 0.3rem 0.25rem;
   }
 }
 

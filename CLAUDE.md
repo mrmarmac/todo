@@ -52,6 +52,7 @@ src/
     SyncSettings.tsx  # Sync… dialog
     useGistSync.ts    # Sync hook (push-on-change, pull-on-load/focus)
     useTheme.ts       # Light/dark/system toggle — sets documentElement.dataset.theme (D45)
+    useLongPress.ts   # Click-on-mouse / hold-on-touch gesture — History rows (D50)
     useFocusTrap.ts   # Tab containment for the three modals (D46)
     cardKeys.ts       # Card keyboard nav: roving arrow focus, delete key
     styles.css        # All styles — "warm Bauhaus" visual system (D34)
@@ -73,6 +74,7 @@ src/
 - A recurring task **stays in Master** when added to Today; Today gets a day-copy (`sourceTaskId` set, `isRecurring: false`). Day-copies reset subtask completion on creation (D19).
   - Only **one live day-copy at a time** — `moveToToday` no-ops while `hasDayCopyInToday` is true, and the Master `→` button is disabled to match (D43).
   - `deleteTask` **cascades** to day-copies (D42) — an orphan with a dangling `sourceTaskId` would be silently destroyed by `removeFromToday` instead of returning to Master.
+- History entries are editable in place: `updateHistoryEntry` changes the **title only**, `deleteHistoryEntry` **cascades** from a task entry to the subtask entries logged under it, and `historyDeletionScope` reports what a delete would take so the UI can confirm it (D50). Neither restores a task to a column.
 - History is pruned to 30 days by `startNewDay`, measured from the newest logged `day` (never wall-clock — `currentDay` is manual, D3/D44).
 - `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
