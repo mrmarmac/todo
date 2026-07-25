@@ -34,6 +34,9 @@ import { ShortcutHelp } from './ShortcutHelp';
 import { SyncSettings } from './SyncSettings';
 import { useGistSync, syncStatusLabel } from './useGistSync';
 import { useConfirm } from './ConfirmDialog';
+import { useTheme, themeLabel } from './useTheme';
+import { onStorageFailure } from '../core/safeStorage';
+import { Icon } from './Icon';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -95,11 +98,25 @@ export function App() {
   const [flashId, setFlashId] = useState<string | null>(null);
   const { confirm, dialog } = useConfirm();
   const sync = useGistSync(state, setState, confirm);
+  const { theme, cycleTheme } = useTheme();
+  // Set once localStorage starts refusing writes (quota full, site data
+  // blocked). Persistence is the whole product here, so a silent failure would
+  // be the worst outcome — the banner says so instead (D41).
+  const [storageBroken, setStorageBroken] = useState(false);
 
   const toggleColumn = (key: ColumnKey) =>
     setCollapsed((c) => ({ ...c, [key]: !c[key] }));
 
-  // Auto-save full app state on every change (D2).
+  // Surface storage failures rather than letting them pass unnoticed (D41).
+  // Declared before the save effect so the subscription is live by the time the
+  // first write runs. Going through the subscription — rather than branching on
+  // save()'s return value — keeps the setState in a callback from an external
+  // system, which is what an effect is for, and catches failed sync-config and
+  // dirty-flag writes too.
+  useEffect(() => onStorageFailure(() => setStorageBroken(true)), []);
+
+  // Auto-save full app state on every change (D2). `save` reports failure
+  // rather than throwing, so a full quota can never unmount the app mid-commit.
   useEffect(() => {
     save(state);
   }, [state]);
@@ -166,7 +183,10 @@ export function App() {
     a.href = url;
     a.download = `todo-export-${toISODate(new Date())}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    // Revoke on the next tick, not inline: Safari — which is the browser this
+    // installed PWA actually runs in — can cancel a download whose blob URL is
+    // revoked in the same task as the click.
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,6 +306,15 @@ export function App() {
           <button
             type="button"
             className="btn btn--quiet"
+            title={`${themeLabel(theme)} — click to change`}
+            aria-label={`${themeLabel(theme)}. Click to change theme.`}
+            onClick={cycleTheme}
+          >
+            <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'contrast'} />
+          </button>
+          <button
+            type="button"
+            className="btn btn--quiet"
             title="Keyboard shortcuts (?)"
             aria-label="Keyboard shortcuts"
             onClick={() => setShowHelp(true)}
@@ -348,6 +377,13 @@ export function App() {
           />
         </div>
       </header>
+
+      {storageBroken && (
+        <p className="app__storage-warning" role="alert">
+          Changes can’t be saved on this device — storage is full or blocked. Export your
+          data before closing this tab.
+        </p>
+      )}
 
       <main className="board">
         <Column

@@ -1,5 +1,6 @@
 import type { AppState } from './types';
 import { isAppState, sanitizeActiveFlags } from './storage';
+import { readLocal, writeLocal, removeLocal } from './safeStorage';
 
 /**
  * GitHub Gist sync (SPEC: cross-device sync).
@@ -87,9 +88,14 @@ function isSyncConfig(value: unknown): value is SyncConfig {
   );
 }
 
-/** Load the saved sync config, or null when absent / corrupt / wrong-shaped. */
+/**
+ * Load the saved sync config, or null when absent / unreadable / corrupt /
+ * wrong-shaped. Reads go through {@link readLocal} (D41) because this runs in a
+ * `useState` initialiser, where a raw `localStorage` throw would take the app
+ * down before it renders.
+ */
 export function loadSyncConfig(): SyncConfig | null {
-  const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+  const raw = readLocal(SYNC_CONFIG_KEY);
   if (raw === null) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -99,14 +105,14 @@ export function loadSyncConfig(): SyncConfig | null {
   }
 }
 
-/** Persist the sync config to localStorage. */
-export function saveSyncConfig(config: SyncConfig): void {
-  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+/** Persist the sync config. Returns false when the write failed (D41). */
+export function saveSyncConfig(config: SyncConfig): boolean {
+  return writeLocal(SYNC_CONFIG_KEY, JSON.stringify(config));
 }
 
 /** Remove any saved sync config (e.g. on disconnect). */
 export function clearSyncConfig(): void {
-  localStorage.removeItem(SYNC_CONFIG_KEY);
+  removeLocal(SYNC_CONFIG_KEY);
 }
 
 // --- HTTP helpers -----------------------------------------------------------

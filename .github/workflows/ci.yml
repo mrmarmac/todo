@@ -1,0 +1,21 @@
+name: CI
+
+# The deploy workflow gates main, but that only runs after a merge. This runs
+# the same checks on every pull request, so a break is caught in review.
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build

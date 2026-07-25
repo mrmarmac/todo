@@ -1,4 +1,5 @@
 import type { AppState, HistoryEntry, Subtask, Task } from './types';
+import { addDaysISO } from './dates';
 
 /** Format a Date as an ISO calendar date (YYYY-MM-DD) in local time. */
 export function toISODate(date: Date): string {
@@ -61,8 +62,20 @@ export function updateTask(state: AppState, id: string, patch: UpdateTaskPatch):
   return { ...state, tasks };
 }
 
+/**
+ * Delete a task, cascading to any day-copies it spawned (D42).
+ *
+ * Deleting a recurring master used to leave its Today copy behind with a
+ * `sourceTaskId` pointing at nothing. `removeFromToday` reads that field to
+ * decide "day-copy, discard it" vs "normal task, return it to Master", so the
+ * orphan took the discard branch: the task vanished with no route back. Delete
+ * means delete — the copies go with the master.
+ */
 export function deleteTask(state: AppState, id: string): AppState {
-  return { ...state, tasks: state.tasks.filter((t) => t.id !== id) };
+  return {
+    ...state,
+    tasks: state.tasks.filter((t) => t.id !== id && t.sourceTaskId !== id),
+  };
 }
 
 /**
@@ -73,13 +86,19 @@ export function deleteTask(state: AppState, id: string): AppState {
  *   a new id, deep-copied subtasks (each reset to isCompleted:false — a fresh
  *   occurrence starts with all subtasks open, D19), isRecurring cleared, and
  *   sourceTaskId set to the master's id (D9).
- * No-op if the id is not a master task.
+ * No-op if the id is not a master task, or if the master is recurring and
+ * {@link hasDayCopyInToday} already reports a copy in Today (D43).
  */
 export function moveToToday(state: AppState, id: string): AppState {
   const source = state.tasks.find((t) => t.id === id);
   if (!source || source.column !== 'master') return state;
 
   if (source.isRecurring) {
+    // One live occurrence at a time (D43). Without this a second click makes a
+    // second copy, and the two rows are identical — same title, same date, no
+    // way for the user to tell which is which or why there are two.
+    if (hasDayCopyInToday(state, id)) return state;
+
     const copy: Task = {
       ...source,
       id: newId(),
@@ -100,6 +119,16 @@ export function moveToToday(state: AppState, id: string): AppState {
   const others = state.tasks.filter((t) => t.id !== id);
   const moved: Task = { ...source, column: 'today' };
   return { ...state, tasks: [...others, moved] };
+}
+
+/**
+ * True when a recurring master already has a day-copy sitting in Today (D43).
+ * Shared by {@link moveToToday}'s guard and the Master row, which disables its
+ * "Move to Today" button on the same condition so the no-op is never a
+ * mystery click.
+ */
+export function hasDayCopyInToday(state: AppState, masterId: string): boolean {
+  return state.tasks.some((t) => t.column === 'today' && t.sourceTaskId === masterId);
 }
 
 /**
@@ -133,6 +162,11 @@ export function removeFromToday(state: AppState, id: string): AppState {
  * Reorder a task within the Today sequence to `targetIndex` (0-based, in the
  * Today ordering after removal). Master and Done tasks keep their positions.
  * No-op if the id is not in Today.
+ *
+ * `targetIndex` is truncated and clamped to the valid range. Raw `splice`
+ * treats a negative index as an offset from the end, so an unclamped -1 would
+ * silently drop the task second-from-last instead of first — the UI guards its
+ * own call sites, but core is the layer that has to hold on its own.
  */
 export function reorderToday(state: AppState, id: string, targetIndex: number): AppState {
   const todayTasks = state.tasks.filter((t) => t.column === 'today');
@@ -141,7 +175,10 @@ export function reorderToday(state: AppState, id: string, targetIndex: number): 
 
   const reordered = [...todayTasks];
   const [moved] = reordered.splice(from, 1);
-  reordered.splice(targetIndex, 0, moved);
+  // Bounds are computed after the removal, so the last valid slot is the
+  // remaining length (splicing there appends to the end).
+  const to = Math.min(Math.max(Math.trunc(targetIndex) || 0, 0), reordered.length);
+  reordered.splice(to, 0, moved);
 
   let i = 0;
   const tasks = state.tasks.map((t) => (t.column === 'today' ? reordered[i++] : t));
@@ -322,6 +359,35 @@ export function clearDone(state: AppState, now: Date): AppState {
   };
 }
 
+/** Days of History kept by {@link pruneHistory}. */
+export const HISTORY_RETENTION_DAYS = 30;
+
+/**
+ * Drop History entries older than {@link HISTORY_RETENTION_DAYS} (D44).
+ *
+ * Retention is measured against the newest day *present in History*, not the
+ * wall clock. History days come from the manual `currentDay` (D3), which can
+ * sit months behind real time if New Day hasn't been pressed — measuring
+ * against `new Date()` would then treat entries logged seconds ago as ancient
+ * and delete them on the spot. Anchoring to the log's own newest day keeps the
+ * window in the same timeline the entries were stamped in.
+ *
+ * Returns the state unchanged when nothing is old enough to drop.
+ */
+export function pruneHistory(state: AppState): AppState {
+  if (state.history.length === 0) return state;
+
+  let newest = state.history[0].day;
+  for (const entry of state.history) {
+    if (entry.day > newest) newest = entry.day;
+  }
+  const cutoff = addDaysISO(newest, -HISTORY_RETENTION_DAYS);
+
+  const history = state.history.filter((entry) => entry.day >= cutoff);
+  if (history.length === state.history.length) return state;
+  return { ...state, history };
+}
+
 /**
  * Advance to a new day (SPEC §6.7, D3/D4), executing in order:
  * 1. Collapse Done into History under the OLD currentDay (as if Clear were pressed).
@@ -331,6 +397,9 @@ export function clearDone(state: AppState, now: Date): AppState {
  *    to incomplete; nothing is logged (no occurrence happened).
  * 4. Clear any active flag.
  * 5. Advance currentDay to the date from `now`.
+ * 6. Prune History past the retention window (D44) — the day rollover is the
+ *    natural point to do it, and it is an explicit user action rather than a
+ *    silent deletion on load.
  */
 export function startNewDay(state: AppState, now: Date): AppState {
   // Step 1: collapse Done under the old day (still current here).
@@ -350,8 +419,8 @@ export function startNewDay(state: AppState, now: Date): AppState {
         : t,
     );
 
-  // Step 5: advance the day.
-  return { ...collapsed, tasks, currentDay: toISODate(now) };
+  // Steps 5 and 6: advance the day, then trim History to the retention window.
+  return pruneHistory({ ...collapsed, tasks, currentDay: toISODate(now) });
 }
 
 /** Clear every active flag across all tasks and their subtasks (invariant helper). */

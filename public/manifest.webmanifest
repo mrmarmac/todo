@@ -5,8 +5,8 @@
   "start_url": "/todo/",
   "scope": "/todo/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#f6f1e7",
+  "theme_color": "#f6f1e7",
   "icons": [
     { "src": "/todo/icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
     { "src": "/todo/icons/icon-512.png", "type": "image/png", "sizes": "512x512" },

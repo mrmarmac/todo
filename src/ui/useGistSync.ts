@@ -12,6 +12,7 @@ import {
   SyncError,
 } from '../core/gistSync';
 import type { SyncConfig, SyncEnvelope, ReconcileDecision } from '../core/gistSync';
+import { readLocal, writeLocal, removeLocal } from '../core/safeStorage';
 import type { ConfirmOptions } from './ConfirmDialog';
 
 /**
@@ -37,13 +38,13 @@ const PUSH_DEBOUNCE_MS = 2500;
 const FOCUS_THROTTLE_MS = 30_000;
 
 function isDirty(): boolean {
-  return localStorage.getItem(DIRTY_KEY) === '1';
+  return readLocal(DIRTY_KEY) === '1';
 }
 function markDirty(): void {
-  localStorage.setItem(DIRTY_KEY, '1');
+  writeLocal(DIRTY_KEY, '1');
 }
 function clearDirty(): void {
-  localStorage.removeItem(DIRTY_KEY);
+  removeLocal(DIRTY_KEY);
 }
 
 function buildEnvelope(state: AppState, modifiedAt: string): SyncEnvelope {
@@ -106,15 +107,32 @@ export function useGistSync(
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Refs mirror the latest config/state for use inside stable callbacks and
-  // timer callbacks without forcing those callbacks to be re-created.
+  // timer callbacks without forcing those callbacks to be re-created. They are
+  // refreshed in an effect rather than assigned during render: a render can be
+  // thrown away or replayed, so writing to a ref there is a side effect on
+  // discarded work. Every reader here (debounce timers, focus handlers, async
+  // continuations, connect()) runs after commit, so post-commit assignment is
+  // soon enough — and `useRef`'s initial values already cover the first render.
+  // This effect is declared first so it lands before the effects below in the
+  // same commit.
   const configRef = useRef(config);
-  configRef.current = config;
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    configRef.current = config;
+    stateRef.current = state;
+  });
 
   const inFlightRef = useRef(false);
   const lastFocusReconcileRef = useRef(0);
-  const isFirstStateEffect = useRef(true);
+  // The last state object the push-on-change effect acted on, seeded with the
+  // state present at mount. Comparing object identity — rather than tracking
+  // "is this the first run?" with a boolean — is what makes the effect safe
+  // under StrictMode, which deliberately invokes effects twice in development:
+  // the second invocation sees the *same* state object and bails, where a
+  // boolean would already have been flipped and would mark the state dirty and
+  // schedule a push against the user's real gist on every dev page load.
+  // It also absorbs any re-run caused by a dependency other than `state`.
+  const lastSeenStateRef = useRef(state);
   // Set right before a reconcile applies remote state via setState(), so the
   // push-on-change effect that fires from that same state update doesn't
   // mistake "we just applied remote" for "the user edited something".
@@ -260,10 +278,8 @@ export function useGistSync(
   // one round trip. Skips the very first render (nothing changed yet) and any
   // state update caused by applying a remote envelope (not a local edit).
   useEffect(() => {
-    if (isFirstStateEffect.current) {
-      isFirstStateEffect.current = false;
-      return;
-    }
+    if (lastSeenStateRef.current === state) return;
+    lastSeenStateRef.current = state;
     if (suppressNextDirtyRef.current) {
       suppressNextDirtyRef.current = false;
       return;

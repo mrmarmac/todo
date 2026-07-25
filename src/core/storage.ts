@@ -1,10 +1,16 @@
 import type { AppState, HistoryEntry, Subtask, Task } from './types';
 import { initialState } from './state';
+import { readLocal, writeLocal } from './safeStorage';
 
 export const STORAGE_KEY = 'todo-pwa/state/v1';
 
-export function save(state: AppState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+/**
+ * Persist the full app state (D2). Returns false when the write failed — a full
+ * quota or blocked site data must degrade to "changes aren't saved", never to a
+ * throw inside the auto-save effect (D41).
+ */
+export function save(state: AppState): boolean {
+  return writeLocal(STORAGE_KEY, JSON.stringify(state));
 }
 
 /** True when the value is a valid Subtask (required fields present and correctly typed). */
@@ -106,7 +112,7 @@ export function sanitizeActiveFlags(state: AppState): AppState {
  * blob can never crash startup.
  */
 export function load(now: Date = new Date()): AppState {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = readLocal(STORAGE_KEY);
   if (raw === null) return initialState(now);
   try {
     const parsed = JSON.parse(raw);

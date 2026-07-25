@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
+import { useFocusTrap } from './useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -54,6 +55,9 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
 
 /** Modal cheatsheet listing every keyboard shortcut (plan §2). */
 export function ShortcutHelp({ onClose }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
+
   // Close on Escape regardless of where focus sits.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -71,7 +75,7 @@ export function ShortcutHelp({ onClose }: Props) {
       aria-modal="true"
       aria-label="Keyboard shortcuts"
     >
-      <div className="shortcut-help" onClick={(e) => e.stopPropagation()}>
+      <div className="shortcut-help" ref={panelRef} onClick={(e) => e.stopPropagation()}>
         <div className="shortcut-help__head">
           <h2>Keyboard shortcuts</h2>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>

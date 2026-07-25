@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { useFocusTrap } from './useFocusTrap';
 import { syncStatusLabel } from './useGistSync';
 import type { UseGistSyncResult } from './useGistSync';
 import type { ConfirmOptions } from './ConfirmDialog';
@@ -33,6 +34,8 @@ function formatLastSynced(iso: string | null): string {
 export function SyncSettings({ sync, confirm, onClose }: Props) {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
 
   // Close on Escape regardless of where focus sits.
   useEffect(() => {
@@ -77,7 +80,7 @@ export function SyncSettings({ sync, confirm, onClose }: Props) {
       aria-modal="true"
       aria-label="Sync settings"
     >
-      <div className="sync-settings" onClick={(e) => e.stopPropagation()}>
+      <div className="sync-settings" ref={panelRef} onClick={(e) => e.stopPropagation()}>
         <div className="sync-settings__head">
           <h2>Sync</h2>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>

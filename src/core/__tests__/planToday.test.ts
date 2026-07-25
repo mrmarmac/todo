@@ -87,10 +87,12 @@ describe('moveToToday — recurring task creates a day-copy', () => {
     expect(copy.subtasks[0]).not.toBe(withSubs.subtasks[0]);
   });
 
-  it('allows the same recurring master to be added twice (two copies)', () => {
-    let s = moveToToday(stateWith([master]), 'm');
-    s = moveToToday(s, 'm');
-    expect(todayIds(s)).toHaveLength(2);
+  it('refuses a second copy while one is already in Today (D43)', () => {
+    // Two copies of the same recurring master are indistinguishable in the
+    // Today list — same title, same date, no way to tell them apart.
+    const s = moveToToday(stateWith([master]), 'm');
+    expect(moveToToday(s, 'm')).toBe(s);
+    expect(todayIds(s)).toHaveLength(1);
     expect(masterIds(s)).toEqual(['m']);
   });
 });
@@ -148,13 +150,20 @@ describe('reorderToday', () => {
 });
 
 describe('deleteTask — recurring master rule (SPEC §6.2)', () => {
-  it('deleting a recurring master leaves its day-copies intact', () => {
+  it('deleting a recurring master cascades to its day-copies (D42)', () => {
+    // A surviving copy would keep a sourceTaskId pointing at nothing, and
+    // removeFromToday reads that field to choose "discard" over "return to
+    // Master" — so the orphan would later vanish with no route back.
     const s0 = stateWith([
       task({ id: 'm', isRecurring: true }),
       task({ id: 'c', column: 'today', sourceTaskId: 'm' }),
     ]);
     const s = deleteTask(s0, 'm');
-    expect(s.tasks.map((t) => t.id)).toEqual(['c']);
-    expect(s.tasks[0].sourceTaskId).toBe('m'); // dangling ref is fine
+    expect(s.tasks).toEqual([]);
+  });
+
+  it('deleting a plain master leaves unrelated tasks alone', () => {
+    const s0 = stateWith([task({ id: 'm' }), task({ id: 'other', column: 'today' })]);
+    expect(deleteTask(s0, 'm').tasks.map((t) => t.id)).toEqual(['other']);
   });
 });
