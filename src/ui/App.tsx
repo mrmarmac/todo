@@ -40,6 +40,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useTheme, themeLabel } from './useTheme';
 import { onStorageFailure } from '../core/safeStorage';
 import { Icon } from './Icon';
+import { Toast } from './Toast';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -50,6 +51,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 /** How long a newly created task stays highlighted, in ms. */
 const FLASH_MS = 1600;
+
+/** How long the undo toast stays on screen after a destructive action, in ms. */
+const TOAST_MS = 5000;
+
+/** A pending undo: the message shown and the full state to restore on undo. */
+interface ToastState {
+  message: string;
+  snapshot: AppState;
+}
 
 /**
  * Wall-clock ISO date (YYYY-MM-DD), kept current while the app stays open so
@@ -99,6 +109,9 @@ export function App() {
   // Id of the task created most recently, highlighted briefly so it can be
   // spotted without scanning the list (it sorts into place, not to the bottom).
   const [flashId, setFlashId] = useState<string | null>(null);
+  // A destructive action (delete / Clear / New Day) captures the prior state
+  // here so the undo toast can restore it — those reducers have no inverse.
+  const [toast, setToast] = useState<ToastState | null>(null);
   const { confirm, dialog } = useConfirm();
   const sync = useGistSync(state, setState, confirm);
   const { theme, cycleTheme } = useTheme();
@@ -130,6 +143,27 @@ export function App() {
     const id = window.setTimeout(() => setFlashId(null), FLASH_MS);
     return () => window.clearTimeout(id);
   }, [flashId]);
+
+  // Auto-dismiss the undo toast after a few seconds (mirrors the flash timeout).
+  useEffect(() => {
+    if (toast === null) return;
+    const id = window.setTimeout(() => setToast(null), TOAST_MS);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  // Apply a destructive change while stashing the prior state for one-tap undo.
+  // deleteTask/clearDone/startNewDay drop or collapse data with no inverse
+  // reducer, so a full snapshot is the only faithful undo.
+  const runWithUndo = (message: string, next: AppState) => {
+    setToast({ message, snapshot: state });
+    setState(next);
+  };
+
+  const handleUndo = () => {
+    if (!toast) return;
+    setState(toast.snapshot);
+    setToast(null);
+  };
 
   // Global keyboard shortcuts. Card-scoped shortcuts live on each card's own
   // onKeyDown; these are the app-level ones.
@@ -240,17 +274,10 @@ export function App() {
       setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
-  const handleStartNewDay = async () => {
-    const ok = await confirm({
-      title: 'Start a new day?',
-      body:
-        'This collapses Done into History, returns unfinished tasks to Master, ' +
-        'and discards unfinished recurring day-copies. This cannot be undone.',
-      confirmLabel: 'Start new day',
-      cancelLabel: 'Cancel',
-      danger: true,
-    });
-    if (ok) setState((s) => startNewDay(s, new Date()));
+  // No confirm: the undo toast is the safety net now (a New Day is fully
+  // restorable from the snapshot, including history it pruned).
+  const handleStartNewDay = () => {
+    runWithUndo('New day started', startNewDay(state, new Date()));
   };
 
   // Deleting from History is unrecoverable — the entry is the only record left
@@ -427,7 +454,7 @@ export function App() {
             flashId={flashId}
             onCreate={handleCreateTask}
             onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
-            onDelete={(id) => setState((s) => deleteTask(s, id))}
+            onDelete={(id) => runWithUndo('Task deleted', deleteTask(state, id))}
             onAddToday={(id) => setState((s) => moveToToday(s, id))}
             subtaskHandlers={subtaskHandlers}
           />
@@ -448,7 +475,7 @@ export function App() {
             onComplete={(id) => setState((s) => completeTask(s, id))}
             onSetActive={(id) => setState((s) => setActive(s, id))}
             onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
-            onDelete={(id) => setState((s) => deleteTask(s, id))}
+            onDelete={(id) => runWithUndo('Task deleted', deleteTask(state, id))}
             subtaskHandlers={subtaskHandlers}
           />
         </Column>
@@ -465,7 +492,7 @@ export function App() {
               className="btn btn--small"
               disabled={doneCount === 0}
               title="Move completed tasks into History"
-              onClick={() => setState((s) => clearDone(s, new Date()))}
+              onClick={() => runWithUndo('Done cleared', clearDone(state, new Date()))}
             >
               Clear
             </button>
@@ -488,6 +515,7 @@ export function App() {
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
       )}
+      {toast && <Toast message={toast.message} onUndo={handleUndo} />}
       {dialog}
     </div>
   );

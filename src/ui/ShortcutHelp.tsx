@@ -30,8 +30,8 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     title: 'On a focused card (Tab or ↑ ↓ to move between cards)',
     rows: [
       ['↑ / ↓', 'Move focus to previous / next card'],
-      ['s', 'Add a subtask'],
-      ['e', 'Edit'],
+      ['Click / tap', 'Open the card to edit (title, due, subtasks, move, delete)'],
+      ['e', 'Open the card to edit'],
       ['Del', 'Delete'],
     ],
   },

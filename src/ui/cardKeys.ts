@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 /**
  * Card-scoped keyboard shortcuts (plan §2). Task cards are focusable
@@ -33,4 +33,15 @@ export function handleArrowNav(e: KeyboardEvent<HTMLLIElement>): boolean {
 /** True for the Delete/Backspace keys used to remove a card. */
 export function isDeleteKey(key: string): boolean {
   return key === 'Delete' || key === 'Backspace';
+}
+
+/**
+ * True when a click on a task card should open its inline edit view: the card
+ * body was clicked, not one of its own controls (the active mark, the
+ * completion checkbox, a URL pill) or a subtask row. Those controls act on
+ * their own; only the surrounding body is the "tap to edit" surface.
+ */
+export function isEditTarget(e: MouseEvent<HTMLLIElement>): boolean {
+  const el = e.target as HTMLElement;
+  return el.closest('input, button, a, label, .subtask-list, .task__drag-handle') === null;
 }
