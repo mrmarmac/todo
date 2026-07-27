@@ -42,11 +42,12 @@ src/
     TodayColumn.tsx
     DoneColumn.tsx
     HistoryPanel.tsx
-    SubtaskList.tsx
-    TaskEditForm.tsx
+    SubtaskList.tsx   # Normal-view subtask rows: checkbox + title only (D51)
+    TaskEditPanel.tsx # Inline card editor — tap the body to open (D51)
+    Toast.tsx         # Bottom-centre one-tap undo bar (D51)
     TaskTitle.tsx     # URL pill rendering (D26)
     DueDate.tsx       # Due-date label + urgency colour (D28)
-    ConfirmDialog.tsx # Shared confirm modal (import, Start New Day, delete)
+    ConfirmDialog.tsx # Shared confirm modal (import, History-entry delete)
     ShortcutHelp.tsx  # Keyboard shortcut overlay
     Icon.tsx          # Inline SVG icon set
     SyncSettings.tsx  # Sync… dialog
@@ -54,7 +55,7 @@ src/
     useTheme.ts       # Light/dark/system toggle — sets documentElement.dataset.theme (D45)
     useLongPress.ts   # Click-on-mouse / hold-on-touch gesture — History rows (D50)
     useFocusTrap.ts   # Tab containment for the three modals (D46)
-    cardKeys.ts       # Card keyboard nav: roving arrow focus, delete key
+    cardKeys.ts       # Card keyboard nav + isEditTarget (tap-to-edit hit test, D51)
     styles.css        # All styles — "warm Bauhaus" visual system (D34)
 ```
 
@@ -65,7 +66,7 @@ src/
 - **AppState**: `{ tasks, history, currentDay }` — `tasks` array order is the manual Today order.
 
 ## Key business rules (the non-obvious ones)
-- `completeTask` **throws** if any subtask is open (D11). UI disables the button, but the core still throws.
+- `completeTask` **throws** if any subtask is open (D11). UI disables the completion checkbox, but the core still throws.
 - Subtask guards differ per function — check before assuming:
   - `addSubtask` — no-op when parent is in **Done**; allowed in Master and Today (D12).
   - `completeSubtask` / `uncompleteSubtask` — no-op unless parent is in **Today**, so Master *and* Done are both blocked (D18). Undo path is Done→Today first, then un-tick.
@@ -79,7 +80,7 @@ src/
 - `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
 - `startNewDay`: collapses Done → History (old day), discards unfinished recurring day-copies, returns remaining Today → Master, clears active, advances `currentDay` (D15).
-- Row actions (edit/delete/etc.) on hover-capable devices are absolutely positioned (no layout slot) to prevent reflow (D40). Add form height is always constant — no `:focus-within` expansion (D35).
+- **Interaction model (D51):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. Completion is a **checkbox** (Today complete / Done uncomplete; Master has none). The Today "active" toggle is the **colour mark dot**, not the title. Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. Add form height is always constant — no `:focus-within` expansion (D35).
 
 ## Constraints
 - **Approved deps only** (D1, amended by D47): `react`, `react-dom`, `typescript`, `vite`, `@vitejs/plugin-react`, `vitest`, plus dev-only `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`. Anything else needs explicit approval.
@@ -100,6 +101,6 @@ src/
 
 ## Background docs
 - `SPEC.md` — full feature spec (source of truth for behaviour)
-- `DECISIONS.md` — architecture decisions D1–D40 (reference when a rule seems arbitrary)
+- `DECISIONS.md` — architecture decisions D1–D51 (reference when a rule seems arbitrary)
 
 Both are long. Read the relevant section, not the whole file.

@@ -5,12 +5,11 @@ import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
 import { parseTaskInput } from '../core/taskInput';
 import { formatRelativeDueDate } from '../core/dates';
-import { Icon } from './Icon';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
-import { TaskEditForm } from './TaskEditForm';
+import { TaskEditPanel } from './TaskEditPanel';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
-import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
+import { handleArrowNav, isCardTarget, isDeleteKey, isEditTarget } from './cardKeys';
 
 interface Props {
   tasks: Task[];
@@ -181,19 +180,26 @@ function MasterTask({
   subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
-  const [addingSubtask, setAddingSubtask] = useState(false);
 
   if (editing) {
     return (
       <li className="task task--editing">
-        <TaskEditForm
+        <TaskEditPanel
           task={task}
           recurringEditable
-          onSave={(patch) => {
-            onUpdate(task.id, patch);
-            setEditing(false);
+          onUpdate={(patch) => onUpdate(task.id, patch)}
+          onDelete={() => onDelete(task.id)}
+          onClose={() => setEditing(false)}
+          subtaskHandlers={subtaskHandlers}
+          move={{
+            label: alreadyInToday ? 'Already in Today' : 'Move to Today',
+            icon: 'arrow-right',
+            disabled: alreadyInToday,
+            onMove: () => {
+              onAddToday(task.id);
+              setEditing(false);
+            },
           }}
-          onCancel={() => setEditing(false)}
         />
       </li>
     );
@@ -208,9 +214,6 @@ function MasterTask({
     } else if (e.key === 'e') {
       e.preventDefault();
       setEditing(true);
-    } else if (e.key === 's') {
-      e.preventDefault();
-      setAddingSubtask(true);
     } else if (isDeleteKey(e.key)) {
       e.preventDefault();
       onDelete(task.id);
@@ -226,6 +229,9 @@ function MasterTask({
       }
       tabIndex={0}
       onKeyDown={onKeyDown}
+      onClick={(e) => {
+        if (isEditTarget(e)) setEditing(true);
+      }}
     >
       <span
         className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
@@ -242,51 +248,7 @@ function MasterTask({
           —
         </span>
       )}
-      <div className="task__actions">
-        <button
-          type="button"
-          className="icon-btn icon-btn--primary"
-          disabled={alreadyInToday}
-          aria-label="Move to Today"
-          title={alreadyInToday ? 'Already in Today' : 'Move to Today (Enter)'}
-          onClick={() => onAddToday(task.id)}
-        >
-          <Icon name="arrow-right" />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Add subtask"
-          title="Add subtask (s)"
-          onClick={() => setAddingSubtask(true)}
-        >
-          <Icon name="plus" />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Edit"
-          title="Edit (e)"
-          onClick={() => setEditing(true)}
-        >
-          <Icon name="pencil" />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Delete"
-          title="Delete"
-          onClick={() => onDelete(task.id)}
-        >
-          <Icon name="trash" />
-        </button>
-      </div>
-      <SubtaskList
-        task={task}
-        adding={addingSubtask}
-        onAddingChange={setAddingSubtask}
-        {...subtaskHandlers}
-      />
+      <SubtaskList task={task} {...subtaskHandlers} />
     </li>
   );
 }

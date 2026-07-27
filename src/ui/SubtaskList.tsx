@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { Task } from '../core/types';
-import { Icon } from './Icon';
 import { UrlPill } from './TaskTitle';
 import { parseUrl } from '../core/urls';
 
@@ -19,22 +18,17 @@ interface Props extends SubtaskHandlers {
   readOnly?: boolean;
   /** Today only: subtask titles are clickable to set/unset active (SPEC §6.8). */
   activatable?: boolean;
-  /** On-demand add input (plan R2 §2): the "Add subtask" field shows only when
-   *  the card opens it (via the ＋ action or the `s` shortcut). */
-  adding?: boolean;
-  onAddingChange?: (v: boolean) => void;
 }
 
-export function SubtaskList({
-  task,
-  readOnly = false,
-  activatable = false,
-  adding = false,
-  onAddingChange,
-  ...h
-}: Props) {
-  // Ticking is a Today-only activity (D18) — Master subtask checkboxes must be
-  // disabled since core now no-ops the tick outside Today.
+/**
+ * The subtask rows shown on a card in its normal (non-editing) state: a
+ * completion checkbox plus the title. Editing, adding and deleting subtasks all
+ * happen in the card's inline edit view (`TaskEditPanel`), so no per-row action
+ * buttons live here anymore.
+ */
+export function SubtaskList({ task, readOnly = false, activatable = false, ...h }: Props) {
+  // Ticking is a Today-only activity (D18) — Master subtask checkboxes are
+  // disabled since core no-ops the tick outside Today.
   const tickable = task.column === 'today';
 
   if (readOnly) {
@@ -58,28 +52,23 @@ export function SubtaskList({
     );
   }
 
+  if (task.subtasks.length === 0) return null;
+
   return (
-    <div className="subtasks">
-      <ul className="subtask-list">
-        {task.subtasks.map((s) => (
-          <SubtaskRow
-            key={s.id}
-            taskId={task.id}
-            subtask={s}
-            activatable={activatable}
-            tickable={tickable}
-            {...h}
-          />
-        ))}
-      </ul>
-      {adding && (
-        <AddSubtaskForm
+    <ul className="subtask-list">
+      {task.subtasks.map((s) => (
+        <SubtaskRow
+          key={s.id}
           taskId={task.id}
-          onAddSubtask={h.onAddSubtask}
-          onClose={() => onAddingChange?.(false)}
+          subtask={s}
+          activatable={activatable}
+          tickable={tickable}
+          onCompleteSubtask={h.onCompleteSubtask}
+          onUncompleteSubtask={h.onUncompleteSubtask}
+          onSetActiveSubtask={h.onSetActiveSubtask}
         />
-      )}
-    </div>
+      ))}
+    </ul>
   );
 }
 
@@ -88,34 +77,18 @@ function SubtaskRow({
   subtask,
   activatable,
   tickable,
-  onUpdateSubtask,
-  onDeleteSubtask,
   onCompleteSubtask,
   onUncompleteSubtask,
   onSetActiveSubtask,
-}: SubtaskHandlers & {
+}: {
   taskId: string;
   subtask: Task['subtasks'][number];
   activatable: boolean;
   tickable: boolean;
+  onCompleteSubtask: (taskId: string, subtaskId: string) => void;
+  onUncompleteSubtask: (taskId: string, subtaskId: string) => void;
+  onSetActiveSubtask: (taskId: string, subtaskId: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <li className="subtask subtask--editing">
-        <SubtaskEditForm
-          subtask={subtask}
-          onSave={(patch) => {
-            onUpdateSubtask(taskId, subtask.id, patch);
-            setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </li>
-    );
-  }
-
   const titleClass =
     'subtask__title' +
     (subtask.isCompleted ? ' subtask__title--done' : '') +
@@ -130,6 +103,7 @@ function SubtaskRow({
           checked={subtask.isCompleted}
           disabled={!tickable}
           title={tickable ? undefined : 'Ticking is only available in Today'}
+          onClick={(e) => e.stopPropagation()}
           onChange={(e) =>
             e.target.checked
               ? onCompleteSubtask(taskId, subtask.id)
@@ -143,7 +117,10 @@ function SubtaskRow({
             type="button"
             className={titleClass + ' subtask__activate'}
             title={subtask.isActive ? 'Unset active' : 'Set as active'}
-            onClick={() => onSetActiveSubtask(taskId, subtask.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSetActiveSubtask(taskId, subtask.id);
+            }}
           >
             {subtask.title}
           </button>
@@ -151,66 +128,7 @@ function SubtaskRow({
           <span className={titleClass}>{subtask.title}</span>
         )}
       </span>
-      <span className="subtask__actions">
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Edit subtask"
-          title="Edit"
-          onClick={() => setEditing(true)}
-        >
-          <Icon name="pencil" />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Delete subtask"
-          title="Delete"
-          onClick={() => onDeleteSubtask(taskId, subtask.id)}
-        >
-          <Icon name="x" />
-        </button>
-      </span>
     </li>
-  );
-}
-
-/**
- * Mounted only while editing, so its local state always seeds fresh from the
- * current `subtask` — avoids the stale-seeding bug (C11) that a
- * useState(subtask.title) set up once at row-mount time would have.
- */
-export function SubtaskEditForm({
-  subtask,
-  onSave,
-  onCancel,
-}: {
-  subtask: Task['subtasks'][number];
-  onSave: (patch: { title: string }) => void;
-  onCancel: () => void;
-}) {
-  const [title, setTitle] = useState(subtask.title);
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (title.trim() === '') return;
-    onSave({ title });
-  }
-
-  return (
-    <form className="subtask__edit" onSubmit={submit}>
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        aria-label="Edit subtask"
-        autoFocus
-      />
-      <button type="submit">Save</button>
-      <button type="button" onClick={onCancel}>
-        Cancel
-      </button>
-    </form>
   );
 }
 
@@ -241,7 +159,12 @@ export function AddSubtaskForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose();
+          // Close just this add field — don't let Escape bubble up and close
+          // the whole edit panel too.
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+          }
         }}
         // Close when the user clicks away without typing anything.
         onBlur={() => {

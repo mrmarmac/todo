@@ -2,7 +2,6 @@ import type { Task } from '../core/types';
 import { SubtaskList } from './SubtaskList';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
-import { Icon } from './Icon';
 import { handleArrowNav, isCardTarget } from './cardKeys';
 
 const noopSubtaskHandlers = {
@@ -55,17 +54,15 @@ export function DoneColumn({ tasks, today, onUncomplete }: Props) {
                 —
               </span>
             )}
-            <div className="task__actions">
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Undo (back to Today)"
-                title="Undo — back to Today (u)"
-                onClick={() => onUncomplete(task.id)}
-              >
-                <Icon name="rotate-ccw" />
-              </button>
-            </div>
+            <span className="task__check">
+              <input
+                type="checkbox"
+                checked
+                aria-label="Mark not done (back to Today)"
+                title="Uncheck — back to Today (u)"
+                onChange={() => onUncomplete(task.id)}
+              />
+            </span>
             <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />
           </li>
         ))}

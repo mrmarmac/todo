@@ -3,11 +3,10 @@ import type { DragEvent } from 'react';
 import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
-import { TaskEditForm } from './TaskEditForm';
+import { TaskEditPanel } from './TaskEditPanel';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
-import { handleArrowNav, isCardTarget, isDeleteKey } from './cardKeys';
-import { Icon } from './Icon';
+import { handleArrowNav, isCardTarget, isDeleteKey, isEditTarget } from './cardKeys';
 
 interface Props {
   tasks: Task[];
@@ -48,7 +47,6 @@ export function TodayColumn({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [insertAt, setInsertAt] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [addingSubtaskId, setAddingSubtaskId] = useState<string | null>(null);
 
   // `insertAt` is a slot in the full list (0..N). `reorderToday` expects the
   // index *after* the dragged card is spliced out, so a slot past the card's
@@ -72,13 +70,26 @@ export function TodayColumn({
           if (editingId === task.id) {
             return (
               <li key={task.id} className="task task--today task--editing">
-                <TaskEditForm
+                <TaskEditPanel
                   task={task}
-                  onSave={(patch) => {
-                    onUpdate(task.id, patch);
-                    setEditingId(null);
+                  onUpdate={(patch) => onUpdate(task.id, patch)}
+                  onDelete={() => onDelete(task.id)}
+                  onClose={() => setEditingId(null)}
+                  subtaskHandlers={subtaskHandlers}
+                  move={{
+                    label: 'Move to Master',
+                    icon: 'arrow-left',
+                    onMove: () => {
+                      onRemove(task.id);
+                      setEditingId(null);
+                    },
                   }}
-                  onCancel={() => setEditingId(null)}
+                  reorder={{
+                    onUp: () => onReorder(task.id, index - 1),
+                    onDown: () => onReorder(task.id, index + 1),
+                    canUp: index > 0,
+                    canDown: index < todayTasks.length - 1,
+                  }}
                 />
               </li>
             );
@@ -95,6 +106,9 @@ export function TodayColumn({
               }
               tabIndex={0}
               draggable
+              onClick={(e) => {
+                if (isEditTarget(e)) setEditingId(task.id);
+              }}
               onKeyDown={(e) => {
                 if (handleArrowNav(e)) return;
                 if (!isCardTarget(e)) return;
@@ -108,9 +122,6 @@ export function TodayColumn({
                 } else if (e.key === 'e') {
                   e.preventDefault();
                   setEditingId(task.id);
-                } else if (e.key === 's') {
-                  e.preventDefault();
-                  setAddingSubtaskId(task.id);
                 } else if (e.key === 'r') {
                   e.preventDefault();
                   onRemove(task.id);
@@ -137,16 +148,21 @@ export function TodayColumn({
                 setInsertAt(null);
               }}
             >
-              <span className="task__mark" aria-hidden="true" />
+              <button
+                type="button"
+                className="task__mark"
+                aria-label={task.isActive ? 'Unset active' : 'Set as active'}
+                title={task.isActive ? 'Unset active' : 'Set as active'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetActive(task.id);
+                }}
+              />
               <div className="task__main">
                 <span className="task__drag-handle" aria-hidden="true">
                   ⠿
                 </span>
-                <TaskTitle
-                  title={task.title}
-                  active={task.isActive}
-                  onActivate={() => onSetActive(task.id)}
-                />
+                <TaskTitle title={task.title} className="task__title" />
                 {task.sourceTaskId && <span className="task__tag">copy</span>}
               </div>
               {task.dueDate ? (
@@ -156,81 +172,18 @@ export function TodayColumn({
                   —
                 </span>
               )}
-              <div className="task__actions">
-                <button
-                  type="button"
-                  className="icon-btn task__move"
-                  disabled={index === 0}
-                  aria-label="Move up"
-                  title="Move up"
-                  onClick={() => onReorder(task.id, index - 1)}
-                >
-                  <Icon name="chevron-up" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn task__move"
-                  disabled={index === todayTasks.length - 1}
-                  aria-label="Move down"
-                  title="Move down"
-                  onClick={() => onReorder(task.id, index + 1)}
-                >
-                  <Icon name="chevron-down" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn--primary"
+              <span className="task__check">
+                <input
+                  type="checkbox"
+                  checked={false}
                   disabled={openSubtasks}
-                  aria-label="Complete"
+                  aria-label="Complete task"
                   title={openSubtasks ? 'Finish all subtasks first' : 'Complete'}
-                  onClick={() => onComplete(task.id)}
-                >
-                  <Icon name="check" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Add subtask"
-                  title="Add subtask (s)"
-                  onClick={() => setAddingSubtaskId(task.id)}
-                >
-                  <Icon name="plus" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Edit"
-                  title="Edit"
-                  onClick={() => setEditingId(task.id)}
-                >
-                  <Icon name="pencil" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Remove from Today"
-                  title="Remove from Today"
-                  onClick={() => onRemove(task.id)}
-                >
-                  <Icon name="arrow-left" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Delete"
-                  title="Delete"
-                  onClick={() => onDelete(task.id)}
-                >
-                  <Icon name="trash" />
-                </button>
-              </div>
-              <SubtaskList
-                task={task}
-                activatable
-                adding={addingSubtaskId === task.id}
-                onAddingChange={(v) => setAddingSubtaskId(v ? task.id : null)}
-                {...subtaskHandlers}
-              />
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => onComplete(task.id)}
+                />
+              </span>
+              <SubtaskList task={task} activatable {...subtaskHandlers} />
             </li>
           );
         })}
