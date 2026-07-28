@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Task } from '../core/types';
 import type { UpdateTaskPatch } from '../core/state';
 import type { SubtaskHandlers } from './SubtaskList';
@@ -6,8 +6,13 @@ import { AddSubtaskForm } from './SubtaskList';
 import { Icon, type IconName } from './Icon';
 
 interface MoveAction {
+  /** Full description for title/aria (e.g. "Move to Today"). */
   label: string;
+  /** The destination, shown as visible button text so the arrow isn't decoded. */
+  shortLabel: 'Today' | 'Master';
   icon: IconName;
+  /** Tints the button with the destination column's colour (D34/D52). */
+  destination: 'today' | 'master';
   disabled?: boolean;
   onMove: () => void;
 }
@@ -56,6 +61,7 @@ export function TaskEditPanel({
 }: Props) {
   const [title, setTitle] = useState(task.title);
   const [adding, setAdding] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // A blank title reverts to the old one (D-inline); any real change is saved.
   function commitTitle() {
@@ -66,8 +72,39 @@ export function TaskEditPanel({
     if (title !== task.title) onUpdate({ title });
   }
 
+  // Click-away closes the panel; the fields' own blur-commits mean click-away
+  // therefore *persists* the edit (D52/WP5).
+  //
+  // This MUST listen for `click`, never `pointerdown`. Ordering: an outside
+  // pointerdown makes the focused input fire `blur` (its commit runs) → then the
+  // `click` fires → we close. Closing on pointerdown would unmount the inputs
+  // before React's onBlur runs and lose the pending edit. Do not change this to
+  // pointerdown.
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node;
+      const panel = panelRef.current;
+      if (!panel) return;
+      // A target detached by a re-render before we look (a subtask row that a
+      // blur just deleted) originated inside the panel — treat it as inside.
+      if (!document.contains(target)) return;
+      // Any click within a task row is handled by that row: clicks inside this
+      // panel keep it open; clicks on another card let that card manage the
+      // switch (in Today the shared editing state closes this one for us). Only
+      // a click on genuinely empty chrome closes-and-persists here. Modal
+      // surfaces are left alone too.
+      if (target instanceof Element && target.closest('.task, .confirm-dialog, .toast')) {
+        return;
+      }
+      onClose();
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [onClose]);
+
   return (
     <div
+      ref={panelRef}
       className="edit-panel"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
@@ -138,7 +175,27 @@ export function TaskEditPanel({
         </button>
       )}
 
+      {/*
+        Fixed slot order in both editors: [move] · [reorder — Today only] ·
+        spacer · [delete] · [Done]. Move is always leftmost and reads its
+        destination as text, so the arrow never flips meaning between sections
+        (D52/WP6); delete sits apart next to Done via the delete button's
+        auto left margin, so nothing shifts position between the two editors.
+      */}
       <div className="edit-panel__actions">
+        {move && (
+          <button
+            type="button"
+            className={`edit-panel__move edit-panel__move--${move.destination}`}
+            aria-label={move.label}
+            title={move.label}
+            disabled={move.disabled}
+            onClick={move.onMove}
+          >
+            <Icon name={move.icon} />
+            <span>{move.shortLabel}</span>
+          </button>
+        )}
         {reorder && (
           <>
             <button
@@ -163,21 +220,9 @@ export function TaskEditPanel({
             </button>
           </>
         )}
-        {move && (
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={move.label}
-            title={move.label}
-            disabled={move.disabled}
-            onClick={move.onMove}
-          >
-            <Icon name={move.icon} />
-          </button>
-        )}
         <button
           type="button"
-          className="icon-btn"
+          className="icon-btn edit-panel__delete"
           aria-label="Delete task"
           title="Delete"
           onClick={onDelete}

@@ -29,10 +29,24 @@ copy changes more often than the structure:
 - Add form: `.add__input` (+ `.add__submit`, `.add__recur` for the Repeat toggle,
   `.add__date`). The placeholder is `New task… “fri”, “+3d”` with curly quotes,
   so an exact `input[placeholder="New task…"]` match finds nothing.
-- Task rows: `.col--master .task`, `.col--today .task`, `.col--done .task`
-- Row actions: `button[aria-label="…"]` within a row — `Move to Today`,
-  `Complete`, `Remove from Today`, `Delete`, `Edit`, `Add subtask`, `Undo (back
-  to Today)`. **These need a `.hover()` on the row first** — see Gotchas.
+- Task rows: `.col--master .task`, `.col--today .task`, `.col--done .task`.
+  Each row's visible content is wrapped in `.task__surface` (D53) — the swipe
+  translates that, not the `<li>`.
+- Row interactions (D51/D52/D53):
+  - **Complete** a Today task: click `.task__check input[type=checkbox]` — it
+    plays a ~0.4s exit animation, so `waitForTimeout(~600ms)` before asserting
+    it landed in Done. Done rows uncomplete via the same checkbox.
+  - **Set active** (Today): the colour mark dot `button.task__mark`.
+  - **Edit**: click the card *body* (a spot that isn't a control) to open
+    `.edit-panel`; inside it the move button is `.edit-panel__move`
+    (`--today`/`--master` variants), delete is `.edit-panel__delete`, Done is
+    `.edit-panel__done`, reorder chevrons are `.icon-btn`.
+  - **Move to Today** (Master, desktop): `button.task__move` (`aria-label="Move
+    to Today"`) — **hover-gated**, see Gotchas. Disabled for a recurring master
+    with a live day-copy (D43).
+  - **Move by swipe** (touch): see the touch-context recipe in Gotchas.
+- Add-form token pill: `.add__token` (the ochre highlight under a recognised
+  date token); the resolved-date echo is `.add__hint-due`.
 - Overflow menu: `.app__menu button[aria-label="More actions"]`, items in
   `.app__menu-list` (Export / Import / Sync…). There is no `.app__menu-btn`.
 - Theme toggle: `button[aria-label*="theme"]` — cycles system → light → dark,
@@ -66,18 +80,35 @@ simulation by bumping the stored envelope's `modifiedAt`, offline via
 
 ## Gotchas
 
-- **Row actions are hover-gated.** On hover-capable devices (which is what
-  Playwright reports) `.task__actions` is `opacity: 0; pointer-events: none`
-  until the row is hovered (D40). Clicking one directly times out with
-  "`<section class="col col--master">` intercepts pointer events" even though
-  the button reports visible and enabled. Hover the row first:
+- **The Master "Move to Today" control is hover-gated** (D53). `.task__move` is
+  `opacity: 0; pointer-events: none` until the row is hovered (and only inside
+  `@media (hover: hover)`, which is what Playwright reports). Hover the row
+  first:
 
   ```js
-  const clickAction = async (row, label) => {
+  const move = async (row) => {
     await row.hover();
-    await row.locator(`button[aria-label="${label}"]`).click();
+    await row.locator('button.task__move').click();
   };
   ```
+
+- **Swipe gestures are touch-only** (D53). Use a `hasTouch: true` context and
+  dispatch synthetic `PointerEvent`s with `pointerType: 'touch'` (a real
+  horizontal drag on the row). Declare horizontal intent by moving `>12px`
+  horizontally and past `max(72px, 30%)` of the row width to trigger; a shorter
+  swipe springs back. Swipe-right on Master → Today, swipe-left on Today →
+  Master. A near-vertical drag must *not* move the row (it scrolls). Allow
+  ~600ms after release for the commit. Mouse HTML5 drag-reorder in Today is
+  unaffected — verify it still works after any change to `.task__surface`.
+
+- **Animations gate commits, so wait.** Completion (~0.4s) and the Master move
+  (~0.25s) animate before `setState`. Under `page.emulateMedia({ reducedMotion:
+  'reduce' })` they still *function* (the `animationend`/timeout still fire), so
+  assert behaviour there too, just without waiting on visible motion.
+
+- **Click-away closes the editor** (D54): a click on empty chrome (header, board
+  gaps) closes `.edit-panel` and persists via the fields' blur-commits. A click
+  inside any `.task` row (including another card) does not force-close it.
 
 - Focus/visibility reconciles are throttled to one per 30s.
 - A recurring master's "Move to Today" is **disabled while its day-copy is in

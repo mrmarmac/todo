@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
@@ -9,7 +9,10 @@ import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditPanel } from './TaskEditPanel';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
+import { Icon } from './Icon';
 import { handleArrowNav, isCardTarget, isDeleteKey, isEditTarget } from './cardKeys';
+import { useRowExit } from './useRowExit';
+import { useSwipeAction } from './useSwipeAction';
 
 interface Props {
   tasks: Task[];
@@ -91,12 +94,49 @@ function AddTaskForm({
   const [raw, setRaw] = useState('');
   const [pickedDate, setPickedDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  // Briefly true after a submit, to sweep the field as it clears (D52/WP7b).
+  const [committed, setCommitted] = useState(false);
+  const localInput = useRef<HTMLInputElement | null>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
 
   const parsed = parseTaskInput(raw, today);
   // A typed token wins over the picker, so the last thing you expressed is the
   // one that counts; the picker stays for setting a date without typing.
   const dueDate = parsed.dueDate ?? (pickedDate || null);
   const canSubmit = parsed.title.trim() !== '';
+
+  // Locate the trailing token in the *raw* string (trailing spaces and all) and
+  // only highlight it when it is exactly the token the parser resolved to a
+  // date — so the ochre pill under the word means precisely "this is a date".
+  const rawToken = /(\S+)\s*$/.exec(raw);
+  const highlight =
+    parsed.dueDate !== null && parsed.token !== null && rawToken?.[1] === parsed.token
+      ? {
+          before: raw.slice(0, rawToken.index),
+          token: rawToken[1],
+          after: raw.slice(rawToken.index + rawToken[1].length),
+        }
+      : null;
+
+  // Merge the forwarded focus ref with a local one used for scroll syncing.
+  function setInputRef(el: HTMLInputElement | null) {
+    localInput.current = el;
+    if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+  }
+
+  // Long titles scroll the input horizontally; keep the mirror in lockstep so
+  // the pill tracks its word off-screen and back.
+  function syncScroll() {
+    if (mirrorRef.current && localInput.current) {
+      mirrorRef.current.scrollLeft = localInput.current.scrollLeft;
+    }
+  }
+
+  useEffect(() => {
+    if (!committed) return;
+    const id = window.setTimeout(() => setCommitted(false), 300);
+    return () => window.clearTimeout(id);
+  }, [committed]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,23 +145,42 @@ function AddTaskForm({
     setRaw('');
     setPickedDate('');
     setIsRecurring(false);
+    setCommitted(true);
     // Keep focus in the field so several tasks can be added in a row.
     inputRef?.current?.focus();
   }
 
   return (
-    <form className="add" onSubmit={submit}>
-      <input
-        ref={inputRef}
-        className="add__input"
-        type="text"
-        placeholder="New task… “fri”, “+3d”"
-        title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
-        value={raw}
-        onChange={(e) => setRaw(e.target.value)}
-        aria-label="New task"
-        aria-describedby="add-hint"
-      />
+    <form className={'add' + (committed ? ' add--committed' : '')} onSubmit={submit}>
+      <div className="add__field">
+        {/* Mirror overlay: same metrics as the input, all text transparent, so
+            only the pill background behind the token shows through the input's
+            own (transparent-background) glyphs. Zero layout shift (D35). */}
+        <div className="add__mirror" aria-hidden="true" ref={mirrorRef}>
+          {highlight && (
+            <>
+              {highlight.before}
+              <mark className="add__token">{highlight.token}</mark>
+              {highlight.after}
+            </>
+          )}
+        </div>
+        <input
+          ref={setInputRef}
+          className="add__input"
+          type="text"
+          placeholder="New task… “fri”, “+3d”"
+          title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
+          value={raw}
+          onChange={(e) => {
+            setRaw(e.target.value);
+            syncScroll();
+          }}
+          onScroll={syncScroll}
+          aria-label="New task"
+          aria-describedby="add-hint"
+        />
+      </div>
       <span className="add__hint" id="add-hint" aria-live="polite">
         {parsed.dueDate && (
           <span className="add__hint-due" title={`“${parsed.token}” → ${parsed.dueDate}`}>
@@ -180,6 +239,21 @@ function MasterTask({
   subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
+  const { exitClassFor, beginExit, onRowAnimationEnd } = useRowExit();
+  // Touch swipe-right → Today, mirroring the hover arrow. Disabled (damped,
+  // never triggers) for a recurring master with a live day-copy (D43).
+  const swipe = useSwipeAction({
+    direction: 'right',
+    enabled: !alreadyInToday,
+    onTrigger: () => onAddToday(task.id),
+  });
+
+  // Play the departing slide, then commit the move — one path for the arrow
+  // click and the keyboard shortcut so both feel the same.
+  function moveToToday() {
+    if (alreadyInToday) return;
+    beginExit(task.id, 'task--departing-right', () => onAddToday(task.id));
+  }
 
   if (editing) {
     return (
@@ -193,7 +267,9 @@ function MasterTask({
           subtaskHandlers={subtaskHandlers}
           move={{
             label: alreadyInToday ? 'Already in Today' : 'Move to Today',
+            shortLabel: 'Today',
             icon: 'arrow-right',
+            destination: 'today',
             disabled: alreadyInToday,
             onMove: () => {
               onAddToday(task.id);
@@ -210,7 +286,7 @@ function MasterTask({
     if (!isCardTarget(e)) return;
     if (e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
-      if (!alreadyInToday) onAddToday(task.id);
+      moveToToday();
     } else if (e.key === 'e') {
       e.preventDefault();
       setEditing(true);
@@ -225,30 +301,62 @@ function MasterTask({
       className={
         'task' +
         (task.isRecurring ? ' task--recurring' : '') +
-        (flash ? ' task--flash' : '')
+        (flash ? ' task--flash' : '') +
+        (swipe.swiping ? ' task--swiping' : '') +
+        (swipe.flinging ? ' task--flinging' : '') +
+        (exitClassFor(task.id) ? ' ' + exitClassFor(task.id) : '')
       }
       tabIndex={0}
       onKeyDown={onKeyDown}
+      onPointerDown={swipe.handlers.onPointerDown}
+      onPointerMove={swipe.handlers.onPointerMove}
+      onPointerUp={swipe.handlers.onPointerUp}
+      onPointerCancel={swipe.handlers.onPointerCancel}
+      onAnimationEnd={(e) => onRowAnimationEnd(task.id, e)}
       onClick={(e) => {
         if (isEditTarget(e)) setEditing(true);
       }}
     >
-      <span
-        className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
-        aria-hidden="true"
-      />
-      <div className="task__main">
-        <TaskTitle title={task.title} className="task__title" />
-        {task.isRecurring && <span className="task__tag">repeat</span>}
-      </div>
-      {task.dueDate ? (
-        <DueDate dueDate={task.dueDate} today={today} />
-      ) : (
-        <span className="task__due task__due--none" aria-hidden="true">
-          —
+      {swipe.dx !== 0 && (
+        <span className="task__swipe-cue task__swipe-cue--today" aria-hidden="true">
+          <Icon name="arrow-right" />
         </span>
       )}
-      <SubtaskList task={task} {...subtaskHandlers} />
+      <div
+        className="task__surface"
+        style={swipe.dx !== 0 ? { transform: `translateX(${swipe.dx}px)` } : undefined}
+        onTransitionEnd={swipe.handlers.onTransitionEnd}
+      >
+        <span
+          className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
+          aria-hidden="true"
+        />
+        <button
+          type="button"
+          className="task__move"
+          aria-label={alreadyInToday ? 'Already in Today' : 'Move to Today'}
+          title={alreadyInToday ? 'Already in Today' : 'Move to Today'}
+          disabled={alreadyInToday}
+          onClick={(e) => {
+            e.stopPropagation();
+            moveToToday();
+          }}
+        >
+          <Icon name="arrow-right" />
+        </button>
+        <div className="task__main">
+          <TaskTitle title={task.title} className="task__title" />
+          {task.isRecurring && <span className="task__tag">repeat</span>}
+        </div>
+        {task.dueDate ? (
+          <DueDate dueDate={task.dueDate} today={today} />
+        ) : (
+          <span className="task__due task__due--none" aria-hidden="true">
+            —
+          </span>
+        )}
+        <SubtaskList task={task} {...subtaskHandlers} />
+      </div>
     </li>
   );
 }
