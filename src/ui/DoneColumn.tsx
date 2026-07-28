@@ -16,10 +16,12 @@ const noopSubtaskHandlers = {
 interface Props {
   tasks: Task[];
   today: string;
+  /** Id of the task that just landed in Done, briefly washed sage (D52). */
+  flashId?: string | null;
   onUncomplete: (id: string) => void;
 }
 
-export function DoneColumn({ tasks, today, onUncomplete }: Props) {
+export function DoneColumn({ tasks, today, flashId, onUncomplete }: Props) {
   const doneTasks = tasks.filter((t) => t.column === 'done');
 
   return (
@@ -31,7 +33,7 @@ export function DoneColumn({ tasks, today, onUncomplete }: Props) {
         {doneTasks.map((task) => (
           <li
             key={task.id}
-            className="task task--done"
+            className={'task task--done' + (task.id === flashId ? ' task--flash-done' : '')}
             tabIndex={0}
             onKeyDown={(e) => {
               if (handleArrowNav(e)) return;
@@ -42,28 +44,30 @@ export function DoneColumn({ tasks, today, onUncomplete }: Props) {
               }
             }}
           >
-            <span className="task__mark" aria-hidden="true" />
-            <div className="task__main">
-              <TaskTitle title={task.title} className="task__title task__title--done" />
-              {task.sourceTaskId && <span className="task__tag">copy</span>}
-            </div>
-            {task.dueDate ? (
-              <DueDate dueDate={task.dueDate} today={today} done />
-            ) : (
-              <span className="task__due task__due--none" aria-hidden="true">
-                —
+            <div className="task__surface">
+              <span className="task__mark" aria-hidden="true" />
+              <div className="task__main">
+                <TaskTitle title={task.title} className="task__title task__title--done" />
+                {task.sourceTaskId && <span className="task__tag">copy</span>}
+              </div>
+              {task.dueDate ? (
+                <DueDate dueDate={task.dueDate} today={today} done />
+              ) : (
+                <span className="task__due task__due--none" aria-hidden="true">
+                  —
+                </span>
+              )}
+              <span className="task__check">
+                <input
+                  type="checkbox"
+                  checked
+                  aria-label="Mark not done (back to Today)"
+                  title="Uncheck — back to Today (u)"
+                  onChange={() => onUncomplete(task.id)}
+                />
               </span>
-            )}
-            <span className="task__check">
-              <input
-                type="checkbox"
-                checked
-                aria-label="Mark not done (back to Today)"
-                title="Uncheck — back to Today (u)"
-                onChange={() => onUncomplete(task.id)}
-              />
-            </span>
-            <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />
+              <SubtaskList task={task} readOnly {...noopSubtaskHandlers} />
+            </div>
           </li>
         ))}
       </ul>

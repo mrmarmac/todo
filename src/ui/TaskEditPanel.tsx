@@ -6,8 +6,13 @@ import { AddSubtaskForm } from './SubtaskList';
 import { Icon, type IconName } from './Icon';
 
 interface MoveAction {
+  /** Full description for title/aria (e.g. "Move to Today"). */
   label: string;
+  /** The destination, shown as visible button text so the arrow isn't decoded. */
+  shortLabel: 'Today' | 'Master';
   icon: IconName;
+  /** Tints the button with the destination column's colour (D34/D52). */
+  destination: 'today' | 'master';
   disabled?: boolean;
   onMove: () => void;
 }
@@ -138,7 +143,27 @@ export function TaskEditPanel({
         </button>
       )}
 
+      {/*
+        Fixed slot order in both editors: [move] · [reorder — Today only] ·
+        spacer · [delete] · [Done]. Move is always leftmost and reads its
+        destination as text, so the arrow never flips meaning between sections
+        (D52/WP6); delete sits apart next to Done via the delete button's
+        auto left margin, so nothing shifts position between the two editors.
+      */}
       <div className="edit-panel__actions">
+        {move && (
+          <button
+            type="button"
+            className={`edit-panel__move edit-panel__move--${move.destination}`}
+            aria-label={move.label}
+            title={move.label}
+            disabled={move.disabled}
+            onClick={move.onMove}
+          >
+            <Icon name={move.icon} />
+            <span>{move.shortLabel}</span>
+          </button>
+        )}
         {reorder && (
           <>
             <button
@@ -163,21 +188,9 @@ export function TaskEditPanel({
             </button>
           </>
         )}
-        {move && (
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={move.label}
-            title={move.label}
-            disabled={move.disabled}
-            onClick={move.onMove}
-          >
-            <Icon name={move.icon} />
-          </button>
-        )}
         <button
           type="button"
-          className="icon-btn"
+          className="icon-btn edit-panel__delete"
           aria-label="Delete task"
           title="Delete"
           onClick={onDelete}

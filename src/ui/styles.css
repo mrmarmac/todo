@@ -34,6 +34,7 @@
   --overlay:     rgba(30, 28, 25, 0.42);
   --raised:      #fbf8f1;
   --flash:       rgba(224, 163, 46, 0.42);
+  --flash-sage:  rgba(110, 139, 106, 0.34);
   --active-wash: rgba(192, 73, 46, 0.07);
 
   --c-master: var(--blue);
@@ -44,6 +45,15 @@
   --c-today-text: #96690c;
 
   --focus: var(--blue);
+
+  /* Motion tokens (D52). "Warm Bauhaus" wants crisp and physical, not bouncy:
+     --ease-settle is a restrained overshoot, not a spring. Theme-independent,
+     so they live only here. The prefers-reduced-motion block still clamps every
+     duration to ~0, so these are advisory. */
+  --dur-quick: 0.15s;
+  --dur-move:  0.3s;
+  --ease-brisk:  cubic-bezier(0.2, 0, 0, 1);
+  --ease-settle: cubic-bezier(0.34, 1.3, 0.64, 1);
 
   /* Let native controls (date picker, checkbox) follow the theme. */
   color-scheme: light dark;
@@ -61,6 +71,7 @@
     --overlay:     rgba(0, 0, 0, 0.62);
     --raised:      #1f1c16;
     --flash:       rgba(232, 178, 76, 0.3);
+    --flash-sage:  rgba(143, 174, 138, 0.26);
     --active-wash: rgba(224, 103, 74, 0.14);
 
     --c-master: #6e93c9;
@@ -86,6 +97,7 @@
   --overlay:     rgba(0, 0, 0, 0.62);
   --raised:      #1f1c16;
   --flash:       rgba(232, 178, 76, 0.3);
+  --flash-sage:  rgba(143, 174, 138, 0.26);
   --active-wash: rgba(224, 103, 74, 0.14);
 
   --c-master: #6e93c9;
@@ -109,6 +121,7 @@
   --overlay:     rgba(30, 28, 25, 0.42);
   --raised:      #fbf8f1;
   --flash:       rgba(224, 163, 46, 0.42);
+  --flash-sage:  rgba(110, 139, 106, 0.34);
   --active-wash: rgba(192, 73, 46, 0.07);
 
   --c-master: var(--blue);
@@ -687,6 +700,20 @@ body {
 }
 
 .task {
+  position: relative;
+  margin-left: -0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The row's visible content lives on an inner surface so a touch swipe can
+   translate it — revealing the colour cue beneath — without moving the li, its
+   border, or the swipe backdrop (D52). Row-state backgrounds (hover, flash,
+   active) stay on the li and show through the normally-transparent surface;
+   the surface only turns opaque while swiping, to occlude the cue everywhere it
+   hasn't slid away from. Editing rows render the panel directly, no surface. */
+.task__surface {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) auto auto;
   grid-template-areas:
@@ -694,9 +721,45 @@ body {
     '.    subs subs  subs';
   align-items: center;
   column-gap: 0.55rem;
-  margin-left: -0.5rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
-  border-bottom: 1px solid var(--rule);
+  padding: 0.5rem;
+  /* Browser owns vertical scroll; horizontal is ours for the swipe gesture. */
+  touch-action: pan-y;
+  transition: transform var(--dur-move) var(--ease-settle);
+}
+
+/* While the finger is tracking, the surface follows it with no easing. */
+.task--swiping .task__surface {
+  transition: none;
+}
+
+.task--swiping .task__surface,
+.task--flinging .task__surface {
+  background: var(--bg);
+}
+
+/* Column-coloured underlay revealed as the surface slides, with a direction
+   glyph on the edge it uncovers. Sits behind the surface (z-index) and only
+   renders while a swipe is in flight. */
+.task__swipe-cue {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  font-size: 1.05rem;
+  color: var(--bg);
+  pointer-events: none;
+}
+
+.task__swipe-cue--today {
+  justify-content: flex-start;
+  background: var(--c-today);
+}
+
+.task__swipe-cue--master {
+  justify-content: flex-end;
+  background: var(--c-master);
 }
 
 .task:focus-visible {
@@ -742,14 +805,79 @@ button.task__mark::after {
   align-items: center;
 }
 
+/* Custom checkbox (D52): a real <input type=checkbox> with native chrome
+   removed, so the tick can be *drawn* in rather than popped, and so hover/press
+   states (WP8) have something to animate. Shared by Today, Done and subtasks. */
+.task__check input[type='checkbox'],
+.subtask__check input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  margin: 0;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--dur-quick) var(--ease-brisk),
+    border-color var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-settle);
+}
+
 .task__check input[type='checkbox'] {
   width: 1.1rem;
   height: 1.1rem;
-  accent-color: var(--c-done);
-  cursor: pointer;
 }
 
-.task__check input[type='checkbox']:disabled {
+.subtask__check input[type='checkbox'] {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* The drawn tick: a rotated corner (two borders). Hidden until checked (or
+   while a Today row is completing, where the input stays unchecked but the
+   choreography draws it anyway). */
+.task__check input[type='checkbox']::after,
+.subtask__check input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 0.24rem;
+  height: 0.46rem;
+  border: solid var(--bg);
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -58%) rotate(45deg) scale(0);
+  opacity: 0;
+}
+
+.task__check input[type='checkbox']:checked,
+.subtask__check input[type='checkbox']:checked,
+.task--completing .task__check input[type='checkbox'] {
+  background: var(--c-done);
+  border-color: var(--c-done);
+}
+
+.task__check input[type='checkbox']:checked::after,
+.subtask__check input[type='checkbox']:checked::after,
+.task--completing .task__check input[type='checkbox']::after {
+  animation: tick-draw 0.16s var(--ease-brisk) forwards;
+}
+
+@keyframes tick-draw {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -58%) rotate(45deg) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -58%) rotate(45deg) scale(1);
+  }
+}
+
+.task__check input[type='checkbox']:disabled,
+.subtask__check input[type='checkbox']:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -885,17 +1013,162 @@ button.task__mark::after {
    is not part of the animation, so it still marks the task under
    prefers-reduced-motion. */
 @keyframes task-flash {
-  from {
+  0% {
     background: var(--flash);
   }
-  to {
+  40% {
+    background: var(--flash);
+  }
+  100% {
     background: transparent;
   }
 }
 
+/* Sage twin for a task landing in Done — sage is the Done colour (D34). */
+@keyframes task-flash-done {
+  0% {
+    background: var(--flash-sage);
+  }
+  40% {
+    background: var(--flash-sage);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* A flashed row lands rather than pops. */
+@keyframes task-enter {
+  from {
+    transform: translateY(-3px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 .task--flash {
-  animation: task-flash 1.6s ease-out;
+  animation:
+    task-flash 2.6s ease-out,
+    task-enter 0.3s var(--ease-settle);
   box-shadow: inset 3px 0 0 var(--c-today);
+}
+
+.task--flash-done {
+  animation:
+    task-flash-done 2.6s ease-out,
+    task-enter 0.3s var(--ease-settle);
+  box-shadow: inset 3px 0 0 var(--c-done);
+}
+
+/* ----- completion choreography (D52) -----
+   The still-mounted Today row plays this before the state commit lands it in
+   Done: tick draws (via the checkbox rule above), title strikes through, the
+   row washes sage, then slides slightly right and fades. The commit fires on
+   this animation's end (useRowExit), never on a fixed timer. */
+@keyframes task-completing {
+  0% {
+    background: transparent;
+    transform: translateX(0);
+    opacity: 1;
+  }
+  30% {
+    background: var(--flash-sage);
+    transform: translateX(0);
+    opacity: 1;
+  }
+  70% {
+    background: var(--flash-sage);
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    background: transparent;
+    transform: translateX(10px);
+    opacity: 0;
+  }
+}
+
+.task--completing {
+  animation: task-completing 0.4s var(--ease-brisk) forwards;
+  pointer-events: none;
+}
+
+.task--completing .task__title {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 62%;
+  background-size: 0% 1.5px;
+  animation: task-strike 0.2s 0.12s var(--ease-brisk) forwards;
+}
+
+@keyframes task-strike {
+  to {
+    background-size: 100% 1.5px;
+  }
+}
+
+/* Master row leaving for Today: a quick slide-right + fade, then the commit. */
+@keyframes task-departing-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+
+.task--departing-right {
+  animation: task-departing-right 0.25s var(--ease-brisk) forwards;
+  pointer-events: none;
+}
+
+/* Row-level "move to Today" control (D52): lives in the empty check slot of a
+   Master row, revealed on hover/focus and never on touch (swipe is the touch
+   path). Hidden state is pointer-events:none so it can't intercept tap-to-edit. */
+.task__move {
+  grid-area: check;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--c-today);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-brisk),
+    background var(--dur-quick) var(--ease-brisk),
+    border-color var(--dur-quick) var(--ease-brisk);
+}
+
+.task__move:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .task:hover .task__move,
+  .task:focus-within .task__move,
+  .task__move:focus-visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .task__move:hover:not(:disabled) {
+    background: var(--c-today);
+    border-color: var(--c-today);
+    color: var(--bg);
+  }
 }
 
 .task__url-pill {
@@ -946,7 +1219,7 @@ button.task__mark::after {
 /* ------------------------------------------------------------ subtasks --- */
 
 .subtasks,
-.task > .subtask-list {
+.task__surface > .subtask-list {
   grid-area: subs;
   min-width: 0;
 }
@@ -973,18 +1246,7 @@ button.task__mark::after {
   min-width: 0;
 }
 
-.subtask__check input[type='checkbox'] {
-  flex: none;
-  width: 0.85rem;
-  height: 0.85rem;
-  accent-color: var(--c-done);
-  cursor: pointer;
-}
-
-.subtask__check input[type='checkbox']:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+/* Sizing + tick for subtask checkboxes is shared with .task__check above. */
 
 .subtask__title {
   color: var(--muted);
@@ -1204,6 +1466,63 @@ button.task__mark::after {
   align-items: center;
   gap: 0.3rem;
   margin-top: 0.1rem;
+}
+
+/* Self-labelling, destination-coloured move button (D52/WP6): the visible
+   "Today"/"Master" text means the arrow never has to be decoded, and the tint
+   is the destination column's own colour (D34). */
+.edit-panel__move {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--dur-quick) var(--ease-brisk),
+    border-color var(--dur-quick) var(--ease-brisk),
+    color var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-brisk);
+}
+
+.edit-panel__move--today {
+  color: var(--c-today-text);
+}
+
+.edit-panel__move--master {
+  color: var(--c-master);
+}
+
+.edit-panel__move:hover:not(:disabled) {
+  border-color: currentColor;
+}
+
+.edit-panel__move--today:hover:not(:disabled) {
+  background: var(--c-today);
+  border-color: var(--c-today);
+  color: var(--bg);
+}
+
+.edit-panel__move--master:hover:not(:disabled) {
+  background: var(--c-master);
+  border-color: var(--c-master);
+  color: var(--bg);
+}
+
+.edit-panel__move:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Delete sits apart, pushed to the trailing edge next to Done. */
+.edit-panel__delete {
+  margin-left: auto;
 }
 
 /* Push "Done" to the trailing edge, away from the icon actions. */

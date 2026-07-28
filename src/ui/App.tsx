@@ -49,8 +49,19 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
-/** How long a newly created task stays highlighted, in ms. */
-const FLASH_MS = 1600;
+/** How long a freshly landed task stays highlighted, in ms (D52). */
+const FLASH_MS = 2600;
+
+/**
+ * What kind of arrival a flash marks, so each column highlights only the rows
+ * it owns and only 'created' scrolls itself into view (a created task sorts
+ * into place and may be offscreen; completed/moved rows land where you looked).
+ */
+type FlashKind = 'created' | 'completed' | 'moved';
+interface FlashState {
+  id: string;
+  kind: FlashKind;
+}
 
 /** How long the undo toast stays on screen after a destructive action, in ms. */
 const TOAST_MS = 5000;
@@ -106,9 +117,10 @@ export function App() {
     today: false,
     done: false,
   });
-  // Id of the task created most recently, highlighted briefly so it can be
-  // spotted without scanning the list (it sorts into place, not to the bottom).
-  const [flashId, setFlashId] = useState<string | null>(null);
+  // The task that most recently arrived in a column, highlighted briefly so it
+  // can be spotted without scanning the list (D52). Carries the arrival kind so
+  // the right column flashes and only creations scroll into view.
+  const [flash, setFlash] = useState<FlashState | null>(null);
   // A destructive action (delete / Clear / New Day) captures the prior state
   // here so the undo toast can restore it — those reducers have no inverse.
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -137,12 +149,29 @@ export function App() {
     save(state);
   }, [state]);
 
-  // Drop the new-task highlight once it has served its purpose.
+  // Drop the arrival highlight once it has served its purpose.
   useEffect(() => {
-    if (flashId === null) return;
-    const id = window.setTimeout(() => setFlashId(null), FLASH_MS);
+    if (flash === null) return;
+    const id = window.setTimeout(() => setFlash(null), FLASH_MS);
     return () => window.clearTimeout(id);
-  }, [flashId]);
+  }, [flash]);
+
+  // Bring a newly *created* task into view: createTask appends but sortMaster
+  // slots it anywhere, so it can be offscreen. Only 'created' scrolls — a
+  // completed row lands in Done and a moved row where the user was already
+  // looking. scroll-behavior isn't covered by the reduced-motion kill-switch,
+  // so honour the preference explicitly here.
+  useEffect(() => {
+    if (flash?.kind !== 'created') return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Wait a frame so the flashed row is in the DOM before we look for it.
+    const raf = window.requestAnimationFrame(() => {
+      document
+        .querySelector('.task--flash')
+        ?.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [flash]);
 
   // Auto-dismiss the undo toast after a few seconds (mirrors the flash timeout).
   useEffect(() => {
@@ -256,9 +285,42 @@ export function App() {
   const handleCreateTask = (input: CreateTaskInput) => {
     const next = createTask(state, input);
     setState(next);
-    setFlashId(next.tasks[next.tasks.length - 1].id);
+    setFlash({ id: next.tasks[next.tasks.length - 1].id, kind: 'created' });
     // A task added while Master is collapsed would otherwise vanish silently.
     setCollapsed((c) => (c.master ? { ...c, master: false } : c));
+  };
+
+  // Moving a Master task to Today is the target of both the hover arrow and the
+  // touch swipe-right (D52). Computed eagerly so the landed Today row can be
+  // flashed: a plain master keeps its id; a recurring one gets a fresh day-copy
+  // (sourceTaskId === id), and there is only ever one live copy (D43).
+  const handleAddToday = (id: string) => {
+    const next = moveToToday(state, id);
+    setState(next);
+    const landed = next.tasks.find(
+      (t) => t.column === 'today' && (t.id === id || t.sourceTaskId === id),
+    );
+    if (landed) setFlash({ id: landed.id, kind: 'moved' });
+  };
+
+  // Completion routes through the exit animation in TodayColumn, so by the time
+  // this runs the task may already have changed underneath us (a sync pull, a
+  // subtask reopened). Guard defensively — completeTask throws on open subtasks
+  // (D11) — and flash the row as it lands in Done.
+  const handleComplete = (id: string) => {
+    setState((s) => {
+      const t = s.tasks.find((t) => t.id === id);
+      if (!t || t.column !== 'today' || t.subtasks.some((st) => !st.isCompleted)) return s;
+      return completeTask(s, id);
+    });
+    setFlash({ id, kind: 'completed' });
+  };
+
+  // Uncomplete gets no exit choreography — just the entrance wash on the Today
+  // side (D52).
+  const handleUncomplete = (id: string) => {
+    setState((s) => uncompleteTask(s, id));
+    setFlash({ id, kind: 'moved' });
   };
 
   const subtaskHandlers: SubtaskHandlers = {
@@ -451,11 +513,11 @@ export function App() {
             tasks={state.tasks}
             today={today}
             addInputRef={addInputRef}
-            flashId={flashId}
+            flashId={flash?.kind === 'created' ? flash.id : null}
             onCreate={handleCreateTask}
             onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
             onDelete={(id) => runWithUndo('Task deleted', deleteTask(state, id))}
-            onAddToday={(id) => setState((s) => moveToToday(s, id))}
+            onAddToday={handleAddToday}
             subtaskHandlers={subtaskHandlers}
           />
         </Column>
@@ -470,9 +532,10 @@ export function App() {
           <TodayColumn
             tasks={state.tasks}
             today={today}
+            flashId={flash?.kind === 'moved' ? flash.id : null}
             onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
             onRemove={(id) => setState((s) => removeFromToday(s, id))}
-            onComplete={(id) => setState((s) => completeTask(s, id))}
+            onComplete={handleComplete}
             onSetActive={(id) => setState((s) => setActive(s, id))}
             onUpdate={(id, patch) => setState((s) => updateTask(s, id, patch))}
             onDelete={(id) => runWithUndo('Task deleted', deleteTask(state, id))}
@@ -501,7 +564,8 @@ export function App() {
           <DoneColumn
             tasks={state.tasks}
             today={today}
-            onUncomplete={(id) => setState((s) => uncompleteTask(s, id))}
+            flashId={flash?.kind === 'completed' ? flash.id : null}
+            onUncomplete={handleUncomplete}
           />
         </Column>
       </main>

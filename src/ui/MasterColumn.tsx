@@ -9,7 +9,10 @@ import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditPanel } from './TaskEditPanel';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
+import { Icon } from './Icon';
 import { handleArrowNav, isCardTarget, isDeleteKey, isEditTarget } from './cardKeys';
+import { useRowExit } from './useRowExit';
+import { useSwipeAction } from './useSwipeAction';
 
 interface Props {
   tasks: Task[];
@@ -180,6 +183,21 @@ function MasterTask({
   subtaskHandlers: SubtaskHandlers;
 }) {
   const [editing, setEditing] = useState(false);
+  const { exitClassFor, beginExit, onRowAnimationEnd } = useRowExit();
+  // Touch swipe-right → Today, mirroring the hover arrow. Disabled (damped,
+  // never triggers) for a recurring master with a live day-copy (D43).
+  const swipe = useSwipeAction({
+    direction: 'right',
+    enabled: !alreadyInToday,
+    onTrigger: () => onAddToday(task.id),
+  });
+
+  // Play the departing slide, then commit the move — one path for the arrow
+  // click and the keyboard shortcut so both feel the same.
+  function moveToToday() {
+    if (alreadyInToday) return;
+    beginExit(task.id, 'task--departing-right', () => onAddToday(task.id));
+  }
 
   if (editing) {
     return (
@@ -193,7 +211,9 @@ function MasterTask({
           subtaskHandlers={subtaskHandlers}
           move={{
             label: alreadyInToday ? 'Already in Today' : 'Move to Today',
+            shortLabel: 'Today',
             icon: 'arrow-right',
+            destination: 'today',
             disabled: alreadyInToday,
             onMove: () => {
               onAddToday(task.id);
@@ -210,7 +230,7 @@ function MasterTask({
     if (!isCardTarget(e)) return;
     if (e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
-      if (!alreadyInToday) onAddToday(task.id);
+      moveToToday();
     } else if (e.key === 'e') {
       e.preventDefault();
       setEditing(true);
@@ -225,30 +245,62 @@ function MasterTask({
       className={
         'task' +
         (task.isRecurring ? ' task--recurring' : '') +
-        (flash ? ' task--flash' : '')
+        (flash ? ' task--flash' : '') +
+        (swipe.swiping ? ' task--swiping' : '') +
+        (swipe.flinging ? ' task--flinging' : '') +
+        (exitClassFor(task.id) ? ' ' + exitClassFor(task.id) : '')
       }
       tabIndex={0}
       onKeyDown={onKeyDown}
+      onPointerDown={swipe.handlers.onPointerDown}
+      onPointerMove={swipe.handlers.onPointerMove}
+      onPointerUp={swipe.handlers.onPointerUp}
+      onPointerCancel={swipe.handlers.onPointerCancel}
+      onAnimationEnd={(e) => onRowAnimationEnd(task.id, e)}
       onClick={(e) => {
         if (isEditTarget(e)) setEditing(true);
       }}
     >
-      <span
-        className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
-        aria-hidden="true"
-      />
-      <div className="task__main">
-        <TaskTitle title={task.title} className="task__title" />
-        {task.isRecurring && <span className="task__tag">repeat</span>}
-      </div>
-      {task.dueDate ? (
-        <DueDate dueDate={task.dueDate} today={today} />
-      ) : (
-        <span className="task__due task__due--none" aria-hidden="true">
-          —
+      {swipe.dx !== 0 && (
+        <span className="task__swipe-cue task__swipe-cue--today" aria-hidden="true">
+          <Icon name="arrow-right" />
         </span>
       )}
-      <SubtaskList task={task} {...subtaskHandlers} />
+      <div
+        className="task__surface"
+        style={swipe.dx !== 0 ? { transform: `translateX(${swipe.dx}px)` } : undefined}
+        onTransitionEnd={swipe.handlers.onTransitionEnd}
+      >
+        <span
+          className={'task__mark' + (task.isRecurring ? ' task__mark--recurring' : '')}
+          aria-hidden="true"
+        />
+        <button
+          type="button"
+          className="task__move"
+          aria-label={alreadyInToday ? 'Already in Today' : 'Move to Today'}
+          title={alreadyInToday ? 'Already in Today' : 'Move to Today'}
+          disabled={alreadyInToday}
+          onClick={(e) => {
+            e.stopPropagation();
+            moveToToday();
+          }}
+        >
+          <Icon name="arrow-right" />
+        </button>
+        <div className="task__main">
+          <TaskTitle title={task.title} className="task__title" />
+          {task.isRecurring && <span className="task__tag">repeat</span>}
+        </div>
+        {task.dueDate ? (
+          <DueDate dueDate={task.dueDate} today={today} />
+        ) : (
+          <span className="task__due task__due--none" aria-hidden="true">
+            —
+          </span>
+        )}
+        <SubtaskList task={task} {...subtaskHandlers} />
+      </div>
     </li>
   );
 }
