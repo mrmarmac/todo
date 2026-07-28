@@ -35,6 +35,8 @@
   --raised:      #fbf8f1;
   --flash:       rgba(224, 163, 46, 0.42);
   --flash-sage:  rgba(110, 139, 106, 0.34);
+  --hover-wash:  rgba(30, 28, 25, 0.04);
+  --token-wash:  rgba(224, 163, 46, 0.30);
   --active-wash: rgba(192, 73, 46, 0.07);
 
   --c-master: var(--blue);
@@ -72,6 +74,8 @@
     --raised:      #1f1c16;
     --flash:       rgba(232, 178, 76, 0.3);
     --flash-sage:  rgba(143, 174, 138, 0.26);
+    --hover-wash:  rgba(237, 230, 214, 0.05);
+    --token-wash:  rgba(232, 178, 76, 0.26);
     --active-wash: rgba(224, 103, 74, 0.14);
 
     --c-master: #6e93c9;
@@ -98,6 +102,8 @@
   --raised:      #1f1c16;
   --flash:       rgba(232, 178, 76, 0.3);
   --flash-sage:  rgba(143, 174, 138, 0.26);
+  --hover-wash:  rgba(237, 230, 214, 0.05);
+  --token-wash:  rgba(232, 178, 76, 0.26);
   --active-wash: rgba(224, 103, 74, 0.14);
 
   --c-master: #6e93c9;
@@ -122,6 +128,8 @@
   --raised:      #fbf8f1;
   --flash:       rgba(224, 163, 46, 0.42);
   --flash-sage:  rgba(110, 139, 106, 0.34);
+  --hover-wash:  rgba(30, 28, 25, 0.04);
+  --token-wash:  rgba(224, 163, 46, 0.30);
   --active-wash: rgba(192, 73, 46, 0.07);
 
   --c-master: var(--blue);
@@ -602,14 +610,82 @@ body {
   border-bottom: 1px solid var(--rule);
 }
 
-.add__input {
+/* The input and its mirror overlay share this box (D52/WP7a). */
+.add__field {
+  position: relative;
   flex: 1 1 8rem;
   min-width: 0;
+  display: flex;
+}
+
+.add__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
   padding: 0.35rem 0.1rem;
   background: transparent;
   border: 0;
   border-bottom: 1px solid transparent;
   font-size: 0.95rem;
+}
+
+/* Behind the input, same metrics, text transparent — only the token pill's
+   background shows through the input's (transparent-background) glyphs. */
+.add__mirror {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0.35rem 0.1rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: normal;
+  white-space: pre;
+  overflow: hidden;
+  color: transparent;
+  pointer-events: none;
+}
+
+/* The ochre pill under a recognised date token. Negative margins offset the
+   padding so the surrounding glyph positions never shift (the token is trailing
+   anyway) and the mirror stays glyph-aligned with the input. */
+.add__token {
+  display: inline-block;
+  padding: 0.08rem 0.22rem;
+  margin: 0 -0.22rem;
+  border-radius: 3px;
+  background: var(--token-wash);
+  color: transparent;
+  animation: token-pop 0.15s var(--ease-settle);
+}
+
+@keyframes token-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Add feedback (D52/WP7b): a quick wash sweeps the field as it clears. The
+   field is already empty by then, so no pill is in the way. */
+.add--committed .add__input {
+  background-image: linear-gradient(90deg, transparent, var(--flash), transparent);
+  background-repeat: no-repeat;
+  background-size: 55% 100%;
+  animation: add-sweep 0.25s var(--ease-brisk);
+}
+
+@keyframes add-sweep {
+  from {
+    background-position: -60% 0;
+  }
+  to {
+    background-position: 160% 0;
+  }
 }
 
 .add__input::placeholder {
@@ -703,6 +779,19 @@ body {
   position: relative;
   margin-left: -0.5rem;
   border-bottom: 1px solid var(--rule);
+  transition:
+    background var(--dur-quick) var(--ease-brisk),
+    box-shadow var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-brisk);
+}
+
+/* Barely-there hover wash on ruled-paper rows (D52/WP3). Hover-capable media
+   only, so touch never sticks it on. Active rows keep their vermilion wash
+   (:not guard) and a running flash animation outranks it in the cascade. */
+@media (hover: hover) {
+  .task:not(.task--active):hover {
+    background: var(--hover-wash);
+  }
 }
 
 /* The row's visible content lives on an inner surface so a touch swipe can
@@ -774,6 +863,7 @@ body {
   justify-self: center;
   border-radius: 50%;
   background: var(--faint);
+  transition: background var(--dur-quick) var(--ease-brisk);
 }
 
 /* Square, not round: a recurring master is a template, not an occurrence. */
@@ -790,12 +880,25 @@ button.task__mark {
   padding: 0;
   border: 0;
   cursor: pointer;
+  transition:
+    transform var(--dur-quick) var(--ease-settle),
+    background var(--dur-quick) var(--ease-brisk);
 }
 
 button.task__mark::after {
   content: '';
   position: absolute;
   inset: -10px -7px;
+}
+
+button.task__mark:active {
+  transform: scale(0.85);
+}
+
+@media (hover: hover) {
+  button.task__mark:hover {
+    transform: scale(1.35);
+  }
 }
 
 .task__check {
@@ -882,6 +985,20 @@ button.task__mark::after {
   cursor: default;
 }
 
+/* Checkbox micro-states (D52/WP8): grow on hover, compress on press. */
+@media (hover: hover) {
+  .task__check input[type='checkbox']:hover:not(:disabled),
+  .subtask__check input[type='checkbox']:hover:not(:disabled) {
+    border-color: var(--fg);
+    transform: scale(1.1);
+  }
+}
+
+.task__check input[type='checkbox']:active:not(:disabled),
+.subtask__check input[type='checkbox']:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
 .task__main {
   grid-area: main;
   display: flex;
@@ -917,6 +1034,16 @@ button.task__mark::after {
   font-size: 0.8rem;
   line-height: 1;
   user-select: none;
+  transition:
+    color var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-settle);
+}
+
+@media (hover: hover) {
+  .task__drag-handle:hover {
+    color: var(--fg);
+    transform: scale(1.15);
+  }
 }
 
 .task__due {
@@ -993,6 +1120,13 @@ button.task__mark::after {
 
 .task--dragging {
   opacity: 0.4;
+  transform: scale(0.98);
+  cursor: grabbing;
+}
+
+.task--dragging .task__drag-handle {
+  color: var(--fg);
+  cursor: grabbing;
 }
 
 .task--insert-before {
@@ -1389,6 +1523,19 @@ button.task__mark::after {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.35rem 0;
+  animation: edit-panel-in 0.12s var(--ease-brisk);
+}
+
+/* Soft open — closing stays instant, no unmount choreography (D52/WP5). */
+@keyframes edit-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .edit-panel__title {
@@ -1879,6 +2026,31 @@ kbd {
     opacity: 1;
     transform: translate(-50%, 0);
   }
+}
+
+/* --------------------------------------------- button micro-states (WP8) --- */
+
+/* One press language for every interactive atom: real transitions on the
+   colour/border swaps, and a uniform 1px "give" on press (D52). */
+.icon-btn,
+.btn,
+.add__submit,
+.add__recur,
+.edit-panel__done {
+  transition:
+    background var(--dur-quick) var(--ease-brisk),
+    border-color var(--dur-quick) var(--ease-brisk),
+    color var(--dur-quick) var(--ease-brisk),
+    transform var(--dur-quick) var(--ease-brisk);
+}
+
+.icon-btn:active:not(:disabled),
+.btn:active:not(:disabled),
+.add__submit:active:not(:disabled),
+.add__recur:active,
+.edit-panel__move:active:not(:disabled),
+.edit-panel__done:active {
+  transform: translateY(1px);
 }
 
 /* ------------------------------------------------- pointer capabilities --- */

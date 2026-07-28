@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Task } from '../core/types';
 import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
@@ -94,12 +94,49 @@ function AddTaskForm({
   const [raw, setRaw] = useState('');
   const [pickedDate, setPickedDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  // Briefly true after a submit, to sweep the field as it clears (D52/WP7b).
+  const [committed, setCommitted] = useState(false);
+  const localInput = useRef<HTMLInputElement | null>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
 
   const parsed = parseTaskInput(raw, today);
   // A typed token wins over the picker, so the last thing you expressed is the
   // one that counts; the picker stays for setting a date without typing.
   const dueDate = parsed.dueDate ?? (pickedDate || null);
   const canSubmit = parsed.title.trim() !== '';
+
+  // Locate the trailing token in the *raw* string (trailing spaces and all) and
+  // only highlight it when it is exactly the token the parser resolved to a
+  // date — so the ochre pill under the word means precisely "this is a date".
+  const rawToken = /(\S+)\s*$/.exec(raw);
+  const highlight =
+    parsed.dueDate !== null && parsed.token !== null && rawToken?.[1] === parsed.token
+      ? {
+          before: raw.slice(0, rawToken.index),
+          token: rawToken[1],
+          after: raw.slice(rawToken.index + rawToken[1].length),
+        }
+      : null;
+
+  // Merge the forwarded focus ref with a local one used for scroll syncing.
+  function setInputRef(el: HTMLInputElement | null) {
+    localInput.current = el;
+    if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+  }
+
+  // Long titles scroll the input horizontally; keep the mirror in lockstep so
+  // the pill tracks its word off-screen and back.
+  function syncScroll() {
+    if (mirrorRef.current && localInput.current) {
+      mirrorRef.current.scrollLeft = localInput.current.scrollLeft;
+    }
+  }
+
+  useEffect(() => {
+    if (!committed) return;
+    const id = window.setTimeout(() => setCommitted(false), 300);
+    return () => window.clearTimeout(id);
+  }, [committed]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,23 +145,42 @@ function AddTaskForm({
     setRaw('');
     setPickedDate('');
     setIsRecurring(false);
+    setCommitted(true);
     // Keep focus in the field so several tasks can be added in a row.
     inputRef?.current?.focus();
   }
 
   return (
-    <form className="add" onSubmit={submit}>
-      <input
-        ref={inputRef}
-        className="add__input"
-        type="text"
-        placeholder="New task… “fri”, “+3d”"
-        title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
-        value={raw}
-        onChange={(e) => setRaw(e.target.value)}
-        aria-label="New task"
-        aria-describedby="add-hint"
-      />
+    <form className={'add' + (committed ? ' add--committed' : '')} onSubmit={submit}>
+      <div className="add__field">
+        {/* Mirror overlay: same metrics as the input, all text transparent, so
+            only the pill background behind the token shows through the input's
+            own (transparent-background) glyphs. Zero layout shift (D35). */}
+        <div className="add__mirror" aria-hidden="true" ref={mirrorRef}>
+          {highlight && (
+            <>
+              {highlight.before}
+              <mark className="add__token">{highlight.token}</mark>
+              {highlight.after}
+            </>
+          )}
+        </div>
+        <input
+          ref={setInputRef}
+          className="add__input"
+          type="text"
+          placeholder="New task… “fri”, “+3d”"
+          title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
+          value={raw}
+          onChange={(e) => {
+            setRaw(e.target.value);
+            syncScroll();
+          }}
+          onScroll={syncScroll}
+          aria-label="New task"
+          aria-describedby="add-hint"
+        />
+      </div>
       <span className="add__hint" id="add-hint" aria-live="polite">
         {parsed.dueDate && (
           <span className="add__hint-due" title={`“${parsed.token}” → ${parsed.dueDate}`}>
