@@ -54,6 +54,8 @@ src/
     useGistSync.ts    # Sync hook (push-on-change, pull-on-load/focus)
     useTheme.ts       # Light/dark/system toggle — sets documentElement.dataset.theme (D45)
     useLongPress.ts   # Click-on-mouse / hold-on-touch gesture — History rows (D50)
+    useRowExit.ts     # Two-phase exit-commit: animate the row, then setState (D52)
+    useSwipeAction.ts # Hand-rolled touch swipe-to-move for Master/Today rows (D53)
     useFocusTrap.ts   # Tab containment for the three modals (D46)
     cardKeys.ts       # Card keyboard nav + isEditTarget (tap-to-edit hit test, D51)
     styles.css        # All styles — "warm Bauhaus" visual system (D34)
@@ -80,7 +82,7 @@ src/
 - `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
 - `startNewDay`: collapses Done → History (old day), discards unfinished recurring day-copies, returns remaining Today → Master, clears active, advances `currentDay` (D15).
-- **Interaction model (D51):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. Completion is a **checkbox** (Today complete / Done uncomplete; Master has none). The Today "active" toggle is the **colour mark dot**, not the title. Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. Add form height is always constant — no `:focus-within` expansion (D35).
+- **Interaction model (D51, extended D52–D57):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. **Click-away closes and persists the editor** (D54 — it listens for `click`, never `pointerdown`, so blur-commits run first). Completion is a **checkbox** (Today complete / Done uncomplete; Master has none) and plays a two-phase exit animation before the state commit (D52). The Today "active" toggle is the **colour mark dot**, not the title. **Moving Master → Today** has three paths that share the same exit motion and D43 disable: a hover/focus `→` control on the row (desktop), a touch **swipe-right** (swipe-left on Today returns to Master, D53), and the editor's destination-labelled move button (D55). Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. A created/moved/completed row flashes on arrival (`flash: {id, kind}`, `FLASH_MS` 2600, D56); the add field highlights the live date token and sweeps on submit. All motion is CSS on the `--dur-*`/`--ease-*` tokens and is neutralised by the `prefers-reduced-motion` kill-switch (D52). Add form height is always constant — no `:focus-within` expansion (D35).
 
 ## Constraints
 - **Approved deps only** (D1, amended by D47): `react`, `react-dom`, `typescript`, `vite`, `@vitejs/plugin-react`, `vitest`, plus dev-only `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`. Anything else needs explicit approval.
