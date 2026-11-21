@@ -188,12 +188,4 @@ Optional, off by default. A private ("secret") GitHub gist holds the full app st
 
 ## 13. Visual Design
 
-"Warm Bauhaus" — geometric modernism on warm paper. Flat shapes, one accent at a time, no ornament.
-
-**Palette.** Paper `#F6F1E7`, ink `#1E1C19`, ochre `#E0A32E`, vermilion `#C0492E`, sage `#6E8B6A`, blue `#2C4A7C`. Each column owns exactly one hue — blue for Master, ochre for Today, sage for Done — so only one accent is ever in play. Vermilion is reserved for the active item and overdue dates. A dark theme re-tunes the same six colours against a dark ground.
-
-**Type.** Futura (Renner, 1927) with geometric fallbacks for display and labels, a humanist sans for body text, and a monospace for dates and counts so figures align. No webfont is loaded, so nothing can silently fall back.
-
-**Structure.** Heavy ink rules build the grid: a 3px rule under each column header, hairlines between rows. Tasks are rows on ruled paper, not cards. Colour shrinks to one 9px mark per row — a circle for a task, a square for a recurring master.
-
-**No layout shift.** Controls never appear by expanding a container that pushes content around: the add form's height is constant regardless of focus, and row actions are lifted out of layout on hover-capable devices. A click can never land on something that moved.
+The visual system lives in [DESIGN.md](DESIGN.md) (D58).

@@ -25,6 +25,7 @@ import {
   toISODate,
 } from '../core/state';
 import { dayProgress } from '../core/progress';
+import { liveUndo, type PendingUndo } from '../core/undo';
 import { exportState, importState } from '../core/exportImport';
 import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
@@ -65,12 +66,6 @@ interface FlashState {
 
 /** How long the undo toast stays on screen after a destructive action, in ms. */
 const TOAST_MS = 5000;
-
-/** A pending undo: the message shown and the full state to restore on undo. */
-interface ToastState {
-  message: string;
-  snapshot: AppState;
-}
 
 /**
  * Wall-clock ISO date (YYYY-MM-DD), kept current while the app stays open so
@@ -123,7 +118,10 @@ export function App() {
   const [flash, setFlash] = useState<FlashState | null>(null);
   // A destructive action (delete / Clear / New Day) captures the prior state
   // here so the undo toast can restore it — those reducers have no inverse.
-  const [toast, setToast] = useState<ToastState | null>(null);
+  const [pendingUndo, setToast] = useState<PendingUndo | null>(null);
+  // Shown only while nothing else has changed since the action — otherwise the
+  // snapshot would also revert that later change (a tick, an edit, a sync pull).
+  const toast = liveUndo(pendingUndo, state);
   const { confirm, dialog } = useConfirm();
   const sync = useGistSync(state, setState, confirm);
   const { theme, cycleTheme } = useTheme();
@@ -184,7 +182,7 @@ export function App() {
   // deleteTask/clearDone/startNewDay drop or collapse data with no inverse
   // reducer, so a full snapshot is the only faithful undo.
   const runWithUndo = (message: string, next: AppState) => {
-    setToast({ message, snapshot: state });
+    setToast({ message, snapshot: state, after: next });
     setState(next);
   };
 

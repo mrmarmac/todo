@@ -82,7 +82,7 @@ src/
 - `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
 - `startNewDay`: collapses Done → History (old day), discards unfinished recurring day-copies, returns remaining Today → Master, clears active, advances `currentDay` (D15).
-- **Interaction model (D51, extended D52–D57):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. **Click-away closes and persists the editor** (D54 — it listens for `click`, never `pointerdown`, so blur-commits run first). Completion is a **checkbox** (Today complete / Done uncomplete; Master has none) and plays a two-phase exit animation before the state commit (D52). The Today "active" toggle is the **colour mark dot**, not the title. **Moving Master → Today** has three paths that share the same exit motion and D43 disable: a hover/focus `→` control on the row (desktop), a touch **swipe-right** (swipe-left on Today returns to Master, D53), and the editor's destination-labelled move button (D55). Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. A created/moved/completed row flashes on arrival (`flash: {id, kind}`, `FLASH_MS` 2600, D56); the add field highlights the live date token and sweeps on submit. All motion is CSS on the `--dur-*`/`--ease-*` tokens and is neutralised by the `prefers-reduced-motion` kill-switch (D52). Add form height is always constant — no `:focus-within` expansion (D35).
+- **Interaction model (D51, extended D52–D57):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. **Click-away closes and persists the editor** (D54 — it listens for `click`, never `pointerdown`, so blur-commits run first). Completion is a **checkbox** (Today complete / Done uncomplete; Master has none) and plays a two-phase exit animation before the state commit (D52). The Today "active" toggle is the **colour mark dot**, not the title. **Moving Master → Today** has three paths that share the same exit motion and D43 disable: a hover/focus `→` control on the row (desktop), a touch **swipe-right** (swipe-left on Today returns to Master, D53), and the editor's destination-labelled move button (D55). Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. The toast disappears as soon as anything else changes state (`liveUndo`, D59), so Undo can never revert a later change. A created/moved/completed row flashes on arrival (`flash: {id, kind}`, `FLASH_MS` 2600, D56); the add field highlights the live date token and sweeps on submit. All motion is CSS on the `--dur-*`/`--ease-*` tokens and is neutralised by the `prefers-reduced-motion` kill-switch (D52). Add form height is always constant — no `:focus-within` expansion (D35).
 
 ## Constraints
 - **Approved deps only** (D1, amended by D47): `react`, `react-dom`, `typescript`, `vite`, `@vitejs/plugin-react`, `vitest`, plus dev-only `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`. Anything else needs explicit approval.
@@ -90,12 +90,8 @@ src/
 - PWA is hand-rolled (`public/sw.js`, `public/manifest.webmanifest`) — no Vite PWA plugin (D17).
 - localStorage keys: `todo-pwa/state/v1` (app state, `core/storage.ts`), `todo-pwa/sync/v1` (sync config **including the GitHub token** — D32, `core/gistSync.ts`), `todo-pwa/sync/dirty/v1` (dirty flag — D33, `ui/useGistSync.ts`), `todo-pwa/theme/v1` (theme preference — D45, `ui/useTheme.ts`).
 
-## Visual system (D34)
-"Warm Bauhaus" — edits to `styles.css` should follow this:
-- Palette: paper `#F6F1E7`, ink `#1E1C19`, ochre `#E0A32E`, vermilion `#C0492E`, sage `#6E8B6A`, blue `#2C4A7C`.
-- Column colours: Master = blue, Today = ochre, Done = sage. Vermilion = active item + overdue.
-- Theming has **three** blocks in `styles.css` that must stay in sync when adding a colour var: `@media (prefers-color-scheme: dark)`, `:root[data-theme='dark']`, and `:root[data-theme='light']` (the manual toggle in `ui/useTheme.ts` must win over the system preference in both directions — D45).
-- Tasks are rows on ruled paper, not cards. One 9px colour mark per row (circle = task, square = recurring).
+## Visual system
+All visual rules (palette, type, spacing, corners, motion, the three theme blocks that must stay in sync) live in `DESIGN.md` (D58). Read it before editing `styles.css`.
 
 ## Verifying a change
 - `npm test` covers the core. The UI has no unit tests — logic belongs in `src/core/` where it can be tested.
@@ -103,6 +99,7 @@ src/
 
 ## Background docs
 - `SPEC.md` — full feature spec (source of truth for behaviour)
+- `DESIGN.md` — visual system (source of truth for appearance)
 - `DECISIONS.md` — architecture decisions D1–D51 (reference when a rule seems arbitrary)
 
 Both are long. Read the relevant section, not the whole file.
