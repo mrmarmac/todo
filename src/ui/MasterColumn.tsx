@@ -5,6 +5,7 @@ import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { sortMaster } from '../core/sort';
 import { parseTaskInput } from '../core/taskInput';
 import { formatRelativeDueDate } from '../core/dates';
+import { formatRepeatDays } from '../core/schedule';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditPanel } from './TaskEditPanel';
 import { DueDate } from './DueDate';
@@ -346,7 +347,11 @@ function MasterTask({
         </button>
         <div className="task__main">
           <TaskTitle title={task.title} className="task__title" />
-          {task.isRecurring && <span className="task__tag">repeat</span>}
+          {task.isRecurring && (
+            <span className="task__tag">
+              {['repeat', formatRepeatDays(task.repeatDays)].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </div>
         {task.dueDate ? (
           <DueDate dueDate={task.dueDate} today={today} />

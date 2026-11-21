@@ -40,6 +40,7 @@ No reminders, notifications, tags, notes, attachments, or search. Personal use o
 - `dueDate` — date or `null`
 - `column` — `master` | `today` | `done`
 - `isRecurring`
+- `repeatDays` — optional; recurring masters only: weekdays it recurs on, 0 = Monday … 6 = Sunday (§8)
 - `isActive`
 - `sourceTaskId` — for a recurring day-copy, the id of its master task; otherwise `null`
 - `subtasks` — array of Subtask
@@ -111,6 +112,15 @@ A **Clear** button moves all currently completed tasks — and their completed s
 - Neither action restores a task to a column — History is a log of what happened, and editing it is for fixing the log, not for undoing a completion.
 
 ### 6.7 Start New Day
+
+**Plan my day (D61).** The New Day button opens a planning screen instead of rolling over at once. When the wall-clock date is later than `currentDay`, a band under the header says so and offers the same screen; the day is still never advanced automatically. The screen lists suggestions for the new day, each ticked by default, grouped in this order (a task appears once, in its first group):
+- **Unfinished** — tasks still in Today (a recurring day-copy is offered as its master).
+- **Overdue** — non-recurring Master tasks due before the new day.
+- **Due today** — non-recurring Master tasks due on the new day.
+- **Scheduled** — recurring masters whose `repeatDays` include the new day's weekday (§8).
+
+"Start day" runs the steps below, then moves the ticked tasks into Today in the listed order. "Not yet" closes the screen and changes nothing. The whole start is undoable from the undo toast. With nothing to suggest, the screen says so and starting gives an empty Today.
+
 In order:
 1. Done is collapsed into History (logged under the **old** `currentDay`), as if Clear were pressed.
 2. Unfinished recurring **day-copies** in Today are discarded (their masters already sit in Master). Nothing is logged.
@@ -136,6 +146,7 @@ Stable within each group unless the user reorders. Due date is used only for thi
 
 - Persist in Master permanently; adding to Today never removes them.
 - **no automatic scheduling** — recurring means "persistent in Master, cloned into Today on manual add."
+- **Schedules suggest, never add (D60).** A recurring master may list the weekdays it recurs on (editor: "Suggest on" day toggles; row label e.g. "repeat · weekdays"). A schedule only makes the task a suggestion on the Plan my day screen (§6.7); nothing enters Today unless the user starts the day with it ticked. A day-copy does not carry its master's schedule.
 
 ## 9. Export / Import
 
@@ -155,7 +166,7 @@ Interactions: click to move task from Master→Today, remove control on Today ta
 
 **Column collapse.** Each of the three columns can be collapsed to its header. The layout decides what the freed space does: on desktop the board is a three-track grid, so a collapsed column keeps its horizontal slot and its neighbours do not move; on a narrow screen the board is a single stacked track, so collapsing frees vertical space and the columns below flow up to fill it.
 
-**One responsive board.** Desktop and mobile share the same board and the same markup; there is no separate mobile shell. Touch devices get permanently visible row actions at a full tap target, and reorder Today with the Move up/down controls rather than dragging.
+**One responsive board.** Desktop and mobile share the same board and the same markup; there is no separate mobile shell. Touch devices get permanently visible row actions at a full tap target, and reorder Today with the Move up/down controls rather than dragging. When the board is stacked (900px and narrower), columns show in the order **Today, Done, Master**, so the day's work is on top and the growing planning list sits last (D62); desktop keeps Master, Today, Done left to right.
 
 ## 11. Acceptance Criteria
 

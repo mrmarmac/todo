@@ -16,6 +16,9 @@ export interface Task {
   isActive: boolean;
   sourceTaskId: string | null; // master id for a recurring day-copy; else null
   subtasks: Subtask[];
+  // Recurring masters only: weekdays it recurs on, 0 = Monday … 6 = Sunday (D60).
+  // Optional so data saved before schedules existed still loads.
+  repeatDays?: number[];
 }
 
 export type OccurrenceType = 'task' | 'subtask';

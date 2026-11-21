@@ -31,6 +31,9 @@ src/
     gistSync.ts       # GitHub Gist sync logic (D31)
     dates.ts          # Date helpers
     urls.ts           # parseUrl — single-token URL detection (D26)
+    schedule.ts       # Recurring schedules: isScheduledOn, formatRepeatDays (D60)
+    planDay.ts        # Plan my day: daySuggestions, startDayWith (D61)
+    undo.ts           # liveUndo — retire the undo toast on any later change (D59)
     progress.ts       # dayProgress() — header progress bar: Done-column tasks
                       #   + today's history entries vs still-open Today count
     __tests__/        # Unit tests for all of the above
@@ -45,6 +48,7 @@ src/
     SubtaskList.tsx   # Normal-view subtask rows: checkbox + title only (D51)
     TaskEditPanel.tsx # Inline card editor — tap the body to open (D51)
     Toast.tsx         # Bottom-centre one-tap undo bar (D51)
+    PlanDay.tsx       # Plan my day screen — opened by New Day and the new-day band (D61)
     TaskTitle.tsx     # URL pill rendering (D26)
     DueDate.tsx       # Due-date label + urgency colour (D28)
     ConfirmDialog.tsx # Shared confirm modal (import, History-entry delete)
@@ -62,7 +66,7 @@ src/
 ```
 
 ## Data model (see `src/core/types.ts` for full types)
-- **Task**: `id, title, dueDate, column ('master'|'today'|'done'), isRecurring, isActive, sourceTaskId, subtasks[]`
+- **Task**: `id, title, dueDate, column ('master'|'today'|'done'), isRecurring, isActive, sourceTaskId, subtasks[], repeatDays?` (`repeatDays` optional, recurring masters only, 0 = Mon … 6 = Sun — D60)
 - **Subtask**: `id, title, isCompleted, isActive`
 - **HistoryEntry**: `id, occurrenceType, taskId, parentTaskId, title, completedAt, day`
 - **AppState**: `{ tasks, history, currentDay }` — `tasks` array order is the manual Today order.
@@ -81,6 +85,7 @@ src/
 - History is pruned to 30 days by `startNewDay`, measured from the newest logged `day` (never wall-clock — `currentDay` is manual, D3/D44).
 - `save()` returns a boolean and never throws; all localStorage goes through `core/safeStorage.ts` (D41). Don't call `localStorage` directly.
 - History `day` = manual `currentDay`, not wall-clock date (D3). Due-date labels use wall-clock day (D25).
+- **New Day goes through Plan my day** (D61): the header button and the new-day band open `PlanDay`; starting calls `startDayWith` = `startNewDay` then `moveToToday` per ticked suggestion. Schedules (`repeatDays`) only ever *suggest* (D60).
 - `startNewDay`: collapses Done → History (old day), discards unfinished recurring day-copies, returns remaining Today → Master, clears active, advances `currentDay` (D15).
 - **Interaction model (D51, extended D52–D57):** tapping a Master/Today card body opens `TaskEditPanel` — the one place to retitle, re-date, edit/add/delete subtasks (blank a subtask input = delete), delete, move columns, and reorder Today. **Click-away closes and persists the editor** (D54 — it listens for `click`, never `pointerdown`, so blur-commits run first). Completion is a **checkbox** (Today complete / Done uncomplete; Master has none) and plays a two-phase exit animation before the state commit (D52). The Today "active" toggle is the **colour mark dot**, not the title. **Moving Master → Today** has three paths that share the same exit motion and D43 disable: a hover/focus `→` control on the row (desktop), a touch **swipe-right** (swipe-left on Today returns to Master, D53), and the editor's destination-labelled move button (D55). Delete / Clear / New Day apply immediately and raise the undo `Toast` (5s), which restores a full pre-action `AppState` snapshot (`runWithUndo` in `App.tsx`) — the only faithful undo for those inverse-less reducers. The toast disappears as soon as anything else changes state (`liveUndo`, D59), so Undo can never revert a later change. A created/moved/completed row flashes on arrival (`flash: {id, kind}`, `FLASH_MS` 2600, D56); the add field highlights the live date token and sweeps on submit. All motion is CSS on the `--dur-*`/`--ease-*` tokens and is neutralised by the `prefers-reduced-motion` kill-switch (D52). Add form height is always constant — no `:focus-within` expansion (D35).
 

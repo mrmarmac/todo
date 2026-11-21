@@ -4,6 +4,7 @@ import type { UpdateTaskPatch } from '../core/state';
 import type { SubtaskHandlers } from './SubtaskList';
 import { AddSubtaskForm } from './SubtaskList';
 import { Icon, type IconName } from './Icon';
+import { WEEKDAY_NAMES } from '../core/schedule';
 
 interface MoveAction {
   /** Full description for title/aria (e.g. "Move to Today"). */
@@ -149,6 +150,29 @@ export function TaskEditPanel({
           </label>
         )}
       </div>
+
+      {recurringEditable && task.isRecurring && (
+        <fieldset className="edit-panel__days">
+          <legend>Suggest on</legend>
+          {WEEKDAY_NAMES.map((name, day) => {
+            const days = task.repeatDays ?? [];
+            const on = days.includes(day);
+            return (
+              <label key={name} className="edit-panel__day" title={name}>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  aria-label={name}
+                  onChange={() =>
+                    onUpdate({ repeatDays: on ? days.filter((d) => d !== day) : [...days, day] })
+                  }
+                />
+                <span aria-hidden="true">{name.slice(0, 2)}</span>
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
 
       {task.subtasks.length > 0 && (
         <ul className="edit-panel__subtasks">

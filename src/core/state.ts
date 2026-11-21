@@ -1,5 +1,6 @@
 import type { AppState, HistoryEntry, Subtask, Task } from './types';
 import { addDaysISO } from './dates';
+import { isWeekday } from './schedule';
 
 /** Format a Date as an ISO calendar date (YYYY-MM-DD) in local time. */
 export function toISODate(date: Date): string {
@@ -44,6 +45,7 @@ export interface UpdateTaskPatch {
   title?: string;
   dueDate?: string | null;
   isRecurring?: boolean;
+  repeatDays?: number[];
 }
 
 export function updateTask(state: AppState, id: string, patch: UpdateTaskPatch): AppState {
@@ -57,6 +59,10 @@ export function updateTask(state: AppState, id: string, patch: UpdateTaskPatch):
     }
     if (patch.dueDate !== undefined) next.dueDate = patch.dueDate;
     if (patch.isRecurring !== undefined) next.isRecurring = patch.isRecurring;
+    if (patch.repeatDays !== undefined) {
+      if (!patch.repeatDays.every(isWeekday)) throw new Error('Repeat days must be 0–6');
+      next.repeatDays = [...new Set(patch.repeatDays)].sort((a, b) => a - b);
+    }
     return next;
   });
   return { ...state, tasks };
@@ -104,6 +110,7 @@ export function moveToToday(state: AppState, id: string): AppState {
       id: newId(),
       column: 'today',
       isRecurring: false,
+      repeatDays: undefined, // the schedule belongs to the master (D60)
       isActive: false,
       sourceTaskId: source.id,
       subtasks: source.subtasks.map((s) => ({

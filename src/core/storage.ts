@@ -1,6 +1,7 @@
 import type { AppState, HistoryEntry, Subtask, Task } from './types';
 import { initialState } from './state';
 import { readLocal, writeLocal } from './safeStorage';
+import { isWeekday } from './schedule';
 
 export const STORAGE_KEY = 'todo-pwa/state/v1';
 
@@ -38,7 +39,8 @@ function isTask(value: unknown): value is Task {
     typeof v.isActive === 'boolean' &&
     (typeof v.sourceTaskId === 'string' || v.sourceTaskId === null) &&
     Array.isArray(v.subtasks) &&
-    v.subtasks.every(isSubtask)
+    v.subtasks.every(isSubtask) &&
+    (v.repeatDays === undefined || (Array.isArray(v.repeatDays) && v.repeatDays.every(isWeekday)))
   );
 }
 

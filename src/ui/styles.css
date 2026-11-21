@@ -503,8 +503,15 @@ body {
     flex-wrap: wrap;
   }
 
-  .add__input {
+  /* The flex child is the field wrapper, not the input inside it (D56), so
+     this — not .add__input — is what gives the field its own line. Doubled
+     class because the base .add__field rule sits later in the file. */
+  .add .add__field {
     flex: 1 1 100%;
+  }
+
+  .add__submit {
+    margin-left: auto;
   }
 
   .col {
@@ -513,6 +520,24 @@ body {
 
   .col + .col {
     border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  /* Stacked, Today comes first: it is what you check through the day, and a
+     growing Master would otherwise push it off screen (D62). Done follows so a
+     completed row lands just below; Master, the planning list, sits last.
+     Visual order only — DOM and tab order stay Master, Today, Done. */
+  .col--today {
+    order: 1;
+    border-top: 0;
+  }
+
+  .col--done {
+    order: 2;
+  }
+
+  .col--master {
+    order: 3;
     border-top: 1px solid var(--rule);
   }
 }
@@ -1568,6 +1593,65 @@ button.task__mark:active {
   gap: 0.35rem;
 }
 
+/* Recurring schedule (D60): seven square day toggles in the Master hue. The
+   native checkbox stays focusable but invisible; the letter box is the face. */
+.edit-panel__days {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.edit-panel__days legend {
+  float: left;
+  margin-right: 0.45rem;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.edit-panel__day {
+  position: relative;
+  cursor: pointer;
+}
+
+.edit-panel__day input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.edit-panel__day span {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  transition: background var(--dur-quick) var(--ease-brisk),
+    color var(--dur-quick) var(--ease-brisk);
+}
+
+.edit-panel__day input:checked + span {
+  background: var(--c-master);
+  border-color: var(--c-master);
+  color: var(--bg);
+}
+
+.edit-panel__day input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .edit-panel__subtasks {
   list-style: none;
   margin: 0;
@@ -1792,11 +1876,127 @@ button.task__mark:active {
   gap: 0.35rem;
 }
 
+/* -------------------------------------------------------- plan my day --- */
+
+/* New-day nudge (D61): a quiet band under the header, Today-coloured edge. */
+.app__new-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem clamp(0.85rem, 2vw, 1.4rem);
+  border-bottom: 1px solid var(--rule);
+  box-shadow: inset 4px 0 0 var(--c-today);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.app__new-day time {
+  font-family: var(--font-data);
+}
+
+/* The weekday is the screen's one expressive move: display type at scale,
+   everything else stays small and ruled. */
+.plan-day__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 3px solid var(--rule-strong);
+}
+
+.plan-day__head h2 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-weight: 400;
+}
+
+.plan-day__label,
+.plan-day__group h3 {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-today-text);
+}
+
+.plan-day__weekday {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 9vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.plan-day__date {
+  margin-top: 0.3rem;
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.plan-day__group {
+  margin-bottom: 0.9rem;
+}
+
+.plan-day__group h3 {
+  margin: 0;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--faint);
+}
+
+.plan-day__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-day__row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.75rem;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+/* Ticked here means "into Today", not "done" — so Today's hue, not sage. */
+.plan-day__row .task__check input[type='checkbox']:checked {
+  background: var(--c-today);
+  border-color: var(--c-today);
+}
+
+.plan-day__title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-day__due {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  color: var(--c-active);
+}
+
+.plan-day__empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
 /* ------------------------------------------------------- modal surfaces --- */
 
 .shortcut-help__backdrop,
 .confirm-dialog__backdrop,
-.sync-settings__backdrop {
+.sync-settings__backdrop,
+.plan-day__backdrop {
   position: fixed;
   inset: 0;
   z-index: 100;
@@ -1813,7 +2013,8 @@ button.task__mark:active {
 
 .shortcut-help,
 .confirm-dialog,
-.sync-settings {
+.sync-settings,
+.plan-day {
   width: min(30rem, 100%);
   max-height: 85vh;
   overflow-y: auto;
@@ -1902,7 +2103,8 @@ kbd {
 }
 
 .confirm-dialog__actions,
-.sync-settings__actions {
+.sync-settings__actions,
+.plan-day__actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -1911,7 +2113,8 @@ kbd {
 }
 
 .confirm-dialog__actions button:not(.btn-primary):not(.btn-danger),
-.sync-settings__actions button:not(.btn-primary):not(.btn-danger) {
+.sync-settings__actions button:not(.btn-primary):not(.btn-danger),
+.plan-day__actions button:not(.btn-primary) {
   font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 600;

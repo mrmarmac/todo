@@ -18,7 +18,6 @@ import {
   uncompleteSubtask,
   setActive,
   setActiveSubtask,
-  startNewDay,
   updateHistoryEntry,
   deleteHistoryEntry,
   historyDeletionScope,
@@ -26,6 +25,7 @@ import {
 } from '../core/state';
 import { dayProgress } from '../core/progress';
 import { liveUndo, type PendingUndo } from '../core/undo';
+import { daySuggestions, startDayWith } from '../core/planDay';
 import { exportState, importState } from '../core/exportImport';
 import type { SubtaskHandlers } from './SubtaskList';
 import { load, save } from '../core/storage';
@@ -42,6 +42,7 @@ import { useTheme, themeLabel } from './useTheme';
 import { onStorageFailure } from '../core/safeStorage';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
+import { PlanDay } from './PlanDay';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -105,6 +106,7 @@ export function App() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showSync, setShowSync] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral view preference — not persisted, resets each load.
   const [collapsed, setCollapsed] = useState<CollapsedState>({
@@ -334,11 +336,15 @@ export function App() {
       setState((s) => setActiveSubtask(s, taskId, subtaskId)),
   };
 
-  // No confirm: the undo toast is the safety net now (a New Day is fully
-  // restorable from the snapshot, including history it pruned).
-  const handleStartNewDay = () => {
-    runWithUndo('New day started', startNewDay(state, new Date()));
+  // New Day goes through Plan my day (D61). No confirm: the undo toast is the
+  // safety net (a New Day is fully restorable from the snapshot, including
+  // history it pruned).
+  const handleStartDay = (pickedIds: string[]) => {
+    setShowPlan(false);
+    runWithUndo('New day started', startDayWith(state, new Date(), pickedIds));
   };
+  // The wall clock has moved past the board's day — nudge, never auto-advance (D3).
+  const isNewDay = today > state.currentDay;
 
   // Deleting from History is unrecoverable — the entry is the only record left
   // of that occurrence — so it confirms, and the prompt names the completed
@@ -403,7 +409,7 @@ export function App() {
         )}
 
         <div className="app__actions">
-          <button type="button" className="btn" onClick={handleStartNewDay}>
+          <button type="button" className="btn" onClick={() => setShowPlan(true)}>
             New Day
           </button>
           {(sync.connected || sync.status === 'error') && (
@@ -499,6 +505,17 @@ export function App() {
         </p>
       )}
 
+      {isNewDay && (
+        <div className="app__new-day" role="status">
+          <span>
+            It’s a new day. The board is still on <time dateTime={state.currentDay}>{state.currentDay}</time>.
+          </span>
+          <button type="button" className="btn" onClick={() => setShowPlan(true)}>
+            Plan my day
+          </button>
+        </div>
+      )}
+
       <main className="board">
         <Column
           columnKey="master"
@@ -576,6 +593,14 @@ export function App() {
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
+      )}
+      {showPlan && (
+        <PlanDay
+          day={today}
+          suggestions={daySuggestions(state, today)}
+          onStart={handleStartDay}
+          onClose={() => setShowPlan(false)}
+        />
       )}
       {toast && <Toast message={toast.message} onUndo={handleUndo} />}
       {dialog}

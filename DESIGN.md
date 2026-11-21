@@ -44,6 +44,10 @@ Rules:
 - **Rows, not cards.** Tasks are rows on ruled paper: hairline rules (`--rule`) between rows, a 3px `--rule-strong` rule under each column header and under the app header.
 - **Colour mark.** One 9px mark per row: a circle for a task, a square for a recurring master.
 - **Board.** Desktop is a three-track grid (`repeat(3, 1fr)`). At 900px and below it becomes a single stacked track. A collapsed column keeps its slot on desktop and frees vertical space when stacked (D38).
+- **Stacked order.** When stacked, columns read Today, Done, Master (CSS `order`, D62). Desktop keeps Master, Today, Done left to right.
+- **Plan my day.** A modal on the shared modal surface. Its one expressive move is the weekday name in display type at scale (`clamp(2.2rem, 9vw, 3rem)`); everything else stays small and ruled. Picks tick in the Today hue, not sage, because ticking here means "into Today", not "done" (D61).
+- **New-day band.** A quiet band under the header with a 4px Today-coloured inset edge (D61).
+- **Schedule toggles.** Seven 2rem square day toggles, filled with the Master hue when on (D60).
 - **Padding.** Compact rows (about 0.2–0.45rem vertical) inside generous column gutters (`clamp(0.85rem, 2vw, 1.4rem)`); dialogs use 1–1.25rem. The header respects `env(safe-area-inset-*)`.
 - **Must work at 375px wide** (iPhone 13 mini) and on macOS.
 
