@@ -39,8 +39,14 @@ copy changes more often than the structure:
   - **Set active** (Today): the colour mark dot `button.task__mark`.
   - **Edit**: click the card *body* (a spot that isn't a control) to open
     `.edit-panel`; inside it the move button is `.edit-panel__move`
-    (`--today`/`--master` variants), delete is `.edit-panel__delete`, Done is
-    `.edit-panel__done`, reorder chevrons are `.icon-btn`.
+    (`--today`/`--master` variants), delete is `.edit-panel__delete`, reorder
+    chevrons are `.icon-btn`. The title is `.edit-panel__title` (no box); the
+    chips are `.chip` — date (`.chip__date` is the invisible native input over
+    it; set it with the native value setter + `change`), `.chip--clear`,
+    Repeat (Master, `aria-pressed`), `.chip--now` (Today). There is no Done
+    button (D64): close with Escape, Enter in the title, or a click outside.
+  - **Add to Today**: `.col--today .add__input` (`aria-label="New task for
+    Today"`) — same form as Master's, no Repeat button (D63).
   - **Move to Today** (Master, desktop): `button.task__move` (`aria-label="Move
     to Today"`) — **hover-gated**, see Gotchas. Disabled for a recurring master
     with a live day-copy (D43).

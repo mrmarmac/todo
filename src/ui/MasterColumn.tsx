@@ -83,15 +83,19 @@ export function MasterColumn({
  * focusing or blurring the field can never reflow the task list underneath and
  * swallow the next click.
  */
-function AddTaskForm({
+export function AddTaskForm({
   onCreate,
   inputRef,
   today,
+  column = 'master',
 }: {
   onCreate: (input: CreateTaskInput) => void;
   inputRef?: RefObject<HTMLInputElement>;
   today: string;
+  /** Today's form (D63) has no Repeat: a repeating task needs a Master original. */
+  column?: 'master' | 'today';
 }) {
+  const hintId = `${column}-add-hint`;
   const [raw, setRaw] = useState('');
   const [pickedDate, setPickedDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
@@ -142,13 +146,13 @@ function AddTaskForm({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    onCreate({ title: parsed.title, dueDate, isRecurring });
+    onCreate({ title: parsed.title, dueDate, isRecurring, column });
     setRaw('');
     setPickedDate('');
     setIsRecurring(false);
     setCommitted(true);
     // Keep focus in the field so several tasks can be added in a row.
-    inputRef?.current?.focus();
+    (inputRef?.current ?? localInput.current)?.focus();
   }
 
   return (
@@ -170,7 +174,7 @@ function AddTaskForm({
           ref={setInputRef}
           className="add__input"
           type="text"
-          placeholder="New task… “fri”, “+3d”"
+          placeholder={column === 'today' ? 'Add to Today… “fri”, “+3d”' : 'New task… “fri”, “+3d”'}
           title="Type a trailing date to set a due date: today, tomorrow, mon–sun, +3d, +2w, or 2026-08-01"
           value={raw}
           onChange={(e) => {
@@ -178,11 +182,11 @@ function AddTaskForm({
             syncScroll();
           }}
           onScroll={syncScroll}
-          aria-label="New task"
-          aria-describedby="add-hint"
+          aria-label={column === 'today' ? 'New task for Today' : 'New task'}
+          aria-describedby={hintId}
         />
       </div>
-      <span className="add__hint" id="add-hint" aria-live="polite">
+      <span className="add__hint" id={hintId} aria-live="polite">
         {parsed.dueDate && (
           <span className="add__hint-due" title={`“${parsed.token}” → ${parsed.dueDate}`}>
             {formatRelativeDueDate(parsed.dueDate, today)}
@@ -203,15 +207,17 @@ function AddTaskForm({
         onChange={(e) => setPickedDate(e.target.value)}
         aria-label="Due date"
       />
-      <button
-        type="button"
-        className={'add__recur' + (isRecurring ? ' add__recur--on' : '')}
-        aria-pressed={isRecurring}
-        title="Recurring task — stays in Master and is copied into Today"
-        onClick={() => setIsRecurring((v) => !v)}
-      >
-        Repeat
-      </button>
+      {column === 'master' && (
+        <button
+          type="button"
+          className={'add__recur' + (isRecurring ? ' add__recur--on' : '')}
+          aria-pressed={isRecurring}
+          title="Recurring task — stays in Master and is copied into Today"
+          onClick={() => setIsRecurring((v) => !v)}
+        >
+          Repeat
+        </button>
+      )}
       <button type="submit" className="add__submit" disabled={!canSubmit}>
         Add
       </button>
@@ -261,6 +267,7 @@ function MasterTask({
       <li className="task task--editing">
         <TaskEditPanel
           task={task}
+          today={today}
           recurringEditable
           onUpdate={(patch) => onUpdate(task.id, patch)}
           onDelete={() => onDelete(task.id)}

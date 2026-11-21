@@ -15,7 +15,9 @@ export type IconName =
   | 'star'
   | 'sun'
   | 'moon'
-  | 'contrast';
+  | 'contrast'
+  | 'calendar'
+  | 'repeat';
 
 /**
  * Inline stroke icons (24×24, lucide-style). They draw with `currentColor` and
@@ -41,6 +43,20 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="1" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
+  repeat: (
+    <>
+      <path d="M17 2l4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <path d="M7 22l-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
     </>
   ),
   'arrow-left': (

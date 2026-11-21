@@ -71,6 +71,8 @@ Represents one completed occurrence.
 ### 6.1 Add
 Create a task in Master. Required: title. Optional: due date, recurring flag.
 
+**Add straight to Today (D63).** Today has the same add field. A task added there starts in Today, at the end of the Today order, and is never recurring (a repeating task needs a Master original; make it in Master). Removing it from Today sends it to Master like any normal task.
+
 The due date may be **typed as a trailing token in the title** — `today`, `tomorrow`, `mon`–`sun`, `+3d`, `+2w`, or an ISO date — which is stripped from the title and resolved to a date. Only the final whitespace-separated token counts, and only when a non-empty title remains; a trailing full stop ("Friday.") keeps a date word literal. The resolved date is shown beside the field before submitting, and a date picker remains available. A newly created task is briefly highlighted, since Master sorts (§7) and the task lands mid-list rather than at the bottom.
 
 ### 6.2 Edit / Delete
@@ -161,6 +163,8 @@ Three columns: Master, Today, Done. Visual states:
 - Recurring master — visually distinct from normal master tasks.
 
 History: minimal panel behind a toggle button, entries grouped by day, newest day first. Entries read as plain text and open an inline title editor (with Delete) on click / long press (§6.6).
+
+**Editing in place (D64).** Tapping a task opens it where it sits. The title is the row's own text, editable directly, with no input box. Below it, details are tappable chips: **date** (opens the native date picker; a × clears it), **Repeat** (Master; shows the schedule, and when on reveals the day toggles of §8) and **Now** (Today; sets or clears the active item, §6.8). Steps (subtasks) are plain lines of text. Changes save as they are made; there is no Done button — Escape, Enter in the title, or a tap outside closes it.
 
 Interactions: click to move task from Master→Today, remove control on Today tasks, drag to reorder within Today, Clear button, Start New Day button, set/unset active, undo completion.
 

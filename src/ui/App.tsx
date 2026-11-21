@@ -285,9 +285,13 @@ export function App() {
   const handleCreateTask = (input: CreateTaskInput) => {
     const next = createTask(state, input);
     setState(next);
-    setFlash({ id: next.tasks[next.tasks.length - 1].id, kind: 'created' });
-    // A task added while Master is collapsed would otherwise vanish silently.
-    setCollapsed((c) => (c.master ? { ...c, master: false } : c));
+    // A Today-created task (D63) lands at the end of Today, so it flashes there
+    // like any arrival; a Master one sorts anywhere, so it also scrolls (D56).
+    const inToday = input.column === 'today';
+    setFlash({ id: next.tasks[next.tasks.length - 1].id, kind: inToday ? 'moved' : 'created' });
+    // A task added into a collapsed column would otherwise vanish silently.
+    const key = inToday ? 'today' : 'master';
+    setCollapsed((c) => (c[key] ? { ...c, [key]: false } : c));
   };
 
   // Moving a Master task to Today is the target of both the hover arrow and the
@@ -548,6 +552,7 @@ export function App() {
             tasks={state.tasks}
             today={today}
             flashId={flash?.kind === 'moved' ? flash.id : null}
+            onCreate={handleCreateTask}
             onReorder={(id, targetIndex) => setState((s) => reorderToday(s, id, targetIndex))}
             onRemove={(id) => setState((s) => removeFromToday(s, id))}
             onComplete={handleComplete}

@@ -22,18 +22,21 @@ export interface CreateTaskInput {
   title: string;
   dueDate?: string | null;
   isRecurring?: boolean;
+  /** Where the task starts (D63). Today-created tasks are never recurring: a repeat needs a Master original. */
+  column?: 'master' | 'today';
 }
 
 export function createTask(state: AppState, input: CreateTaskInput): AppState {
   const title = input.title.trim();
   if (title === '') throw new Error('Task title is required');
+  const column = input.column ?? 'master';
 
   const task: Task = {
     id: newId(),
     title,
     dueDate: input.dueDate ?? null,
-    column: 'master',
-    isRecurring: input.isRecurring ?? false,
+    column,
+    isRecurring: column === 'master' && (input.isRecurring ?? false),
     isActive: false,
     sourceTaskId: null,
     subtasks: [],

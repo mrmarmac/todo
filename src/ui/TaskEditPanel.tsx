@@ -4,7 +4,8 @@ import type { UpdateTaskPatch } from '../core/state';
 import type { SubtaskHandlers } from './SubtaskList';
 import { AddSubtaskForm } from './SubtaskList';
 import { Icon, type IconName } from './Icon';
-import { WEEKDAY_NAMES } from '../core/schedule';
+import { WEEKDAY_NAMES, formatRepeatDays } from '../core/schedule';
+import { formatRelativeDueDate } from '../core/dates';
 
 interface MoveAction {
   /** Full description for title/aria (e.g. "Move to Today"). */
@@ -27,6 +28,8 @@ interface ReorderAction {
 
 interface Props {
   task: Task;
+  /** Wall-clock day, for the date chip's relative label. */
+  today: string;
   /** Pre-bound to the task id by the caller — the single `updateTask` path. */
   onUpdate: (patch: UpdateTaskPatch) => void;
   onDelete: () => void;
@@ -38,6 +41,8 @@ interface Props {
   move?: MoveAction;
   /** Today only: reorder this card within the manual Today order. */
   reorder?: ReorderAction;
+  /** Today only: the "Now" chip toggles this task as the active item. */
+  onToggleNow?: () => void;
 }
 
 /**
@@ -52,6 +57,7 @@ interface Props {
  */
 export function TaskEditPanel({
   task,
+  today,
   onUpdate,
   onDelete,
   onClose,
@@ -59,6 +65,7 @@ export function TaskEditPanel({
   recurringEditable = false,
   move,
   reorder,
+  onToggleNow,
 }: Props) {
   const [title, setTitle] = useState(task.title);
   const [adding, setAdding] = useState(false);
@@ -114,6 +121,7 @@ export function TaskEditPanel({
         }
       }}
     >
+      {/* The title is the row's own text, editable in place — no box (D64). */}
       <input
         className="edit-panel__title"
         type="text"
@@ -131,23 +139,63 @@ export function TaskEditPanel({
         autoFocus
       />
 
-      <div className="edit-panel__row">
-        <input
-          className="edit-panel__date"
-          type="date"
-          value={task.dueDate ?? ''}
-          onChange={(e) => onUpdate({ dueDate: e.target.value || null })}
-          aria-label="Due date"
-        />
+      <div className="edit-panel__chips">
+        {/* The native date input sits invisibly over the chip, so the picker
+            is the platform's own; showPicker opens it on any click, not just
+            on the calendar glyph. */}
+        <label className={'chip' + (task.dueDate ? ' chip--on' : '')}>
+          <Icon name="calendar" />
+          <span>{task.dueDate ? formatRelativeDueDate(task.dueDate, today) : 'Add date'}</span>
+          <input
+            className="chip__date"
+            type="date"
+            value={task.dueDate ?? ''}
+            onChange={(e) => onUpdate({ dueDate: e.target.value || null })}
+            onClick={(e) => {
+              try {
+                e.currentTarget.showPicker();
+              } catch {
+                /* older browsers open it themselves */
+              }
+            }}
+            aria-label="Due date"
+          />
+        </label>
+        {task.dueDate && (
+          <button
+            type="button"
+            className="chip chip--clear"
+            aria-label="Clear due date"
+            title="Clear due date"
+            onClick={() => onUpdate({ dueDate: null })}
+          >
+            <Icon name="x" />
+          </button>
+        )}
         {recurringEditable && (
-          <label className="edit-panel__recur">
-            <input
-              type="checkbox"
-              checked={task.isRecurring}
-              onChange={(e) => onUpdate({ isRecurring: e.target.checked })}
-            />
-            Recurring
-          </label>
+          <button
+            type="button"
+            className={'chip' + (task.isRecurring ? ' chip--on' : '')}
+            aria-pressed={task.isRecurring}
+            onClick={() => onUpdate({ isRecurring: !task.isRecurring })}
+          >
+            <Icon name="repeat" />
+            <span>
+              {task.isRecurring
+                ? ['Repeat', formatRepeatDays(task.repeatDays)].filter(Boolean).join(' · ')
+                : 'Repeat'}
+            </span>
+          </button>
+        )}
+        {onToggleNow && (
+          <button
+            type="button"
+            className={'chip chip--now' + (task.isActive ? ' chip--on' : '')}
+            aria-pressed={task.isActive}
+            onClick={onToggleNow}
+          >
+            Now
+          </button>
         )}
       </div>
 
@@ -195,16 +243,16 @@ export function TaskEditPanel({
         />
       ) : (
         <button type="button" className="edit-panel__add" onClick={() => setAdding(true)}>
-          + Add subtask
+          + Add a step
         </button>
       )}
 
       {/*
         Fixed slot order in both editors: [move] · [reorder — Today only] ·
-        spacer · [delete] · [Done]. Move is always leftmost and reads its
-        destination as text, so the arrow never flips meaning between sections
-        (D52/WP6); delete sits apart next to Done via the delete button's
-        auto left margin, so nothing shifts position between the two editors.
+        spacer · [delete]. Move is always leftmost and reads its destination
+        as text, so the arrow never flips meaning between sections (D52/WP6);
+        delete sits at the trailing edge via its auto left margin. No Done
+        button: edits save as you go and click-away closes (D54/D64).
       */}
       <div className="edit-panel__actions">
         {move && (
@@ -252,9 +300,6 @@ export function TaskEditPanel({
           onClick={onDelete}
         >
           <Icon name="trash" />
-        </button>
-        <button type="button" className="edit-panel__done" onClick={onClose}>
-          Done
         </button>
       </div>
     </div>

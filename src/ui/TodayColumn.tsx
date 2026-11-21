@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { DragEvent } from 'react';
 import type { Task } from '../core/types';
-import type { UpdateTaskPatch } from '../core/state';
+import type { CreateTaskInput, UpdateTaskPatch } from '../core/state';
 import { SubtaskList, type SubtaskHandlers } from './SubtaskList';
 import { TaskEditPanel } from './TaskEditPanel';
+import { AddTaskForm } from './MasterColumn';
 import { DueDate } from './DueDate';
 import { TaskTitle } from './TaskTitle';
 import { Icon } from './Icon';
@@ -16,6 +17,7 @@ interface Props {
   today: string;
   /** Id of a task that just landed in Today (moved from Master, un-completed). */
   flashId?: string | null;
+  onCreate: (input: CreateTaskInput) => void;
   onReorder: (id: string, targetIndex: number) => void;
   onRemove: (id: string) => void;
   onComplete: (id: string) => void;
@@ -41,6 +43,7 @@ export function TodayColumn({
   tasks,
   today,
   flashId,
+  onCreate,
   onReorder,
   onRemove,
   onComplete,
@@ -68,8 +71,9 @@ export function TodayColumn({
 
   return (
     <>
+      <AddTaskForm onCreate={onCreate} today={today} column="today" />
       {todayTasks.length === 0 && (
-        <p className="col__placeholder">Add tasks from Master with “→”.</p>
+        <p className="col__placeholder">Add a task above, or bring one from Master with “→”.</p>
       )}
       <ul className="task-list">
         {todayTasks.map((task, index) =>
@@ -77,6 +81,8 @@ export function TodayColumn({
             <li key={task.id} className="task task--today task--editing">
               <TaskEditPanel
                 task={task}
+                today={today}
+                onToggleNow={() => onSetActive(task.id)}
                 onUpdate={(patch) => onUpdate(task.id, patch)}
                 onDelete={() => onDelete(task.id)}
                 onClose={() => setEditingId(null)}

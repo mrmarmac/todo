@@ -1564,33 +1564,93 @@ button.task__mark:active {
 }
 
 .edit-panel__title {
-  padding: 0.35rem 0.45rem;
-  background: var(--field-bg);
-  border: 1px solid var(--rule);
-  font-size: 0.95rem;
+  /* The row's own title, editable in place: no box, same type (D64). */
+  width: 100%;
+  padding: 0.15rem 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  font-size: 1.05rem;
+  font-weight: 500;
+  caret-color: var(--c-active);
 }
 
-.edit-panel__row {
+.edit-panel__title:focus {
+  outline: none;
+  border-bottom-color: var(--rule);
+}
+
+/* Date / Repeat / Now as tappable chips (D64). */
+.edit-panel__chips {
   display: flex;
-  align-items: center;
-  gap: 0.7rem;
   flex-wrap: wrap;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.edit-panel__date {
-  padding: 0.22rem 0.35rem;
-  background: var(--field-bg);
-  border: 1px solid var(--rule);
-  font-family: var(--font-data);
-  font-size: 0.74rem;
-}
-
-.edit-panel__recur {
-  display: flex;
-  align-items: center;
   gap: 0.35rem;
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0 0.7rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background var(--dur-quick) var(--ease-brisk),
+    border-color var(--dur-quick) var(--ease-brisk),
+    color var(--dur-quick) var(--ease-brisk);
+}
+
+.chip:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chip--on {
+  color: var(--fg);
+  border-color: var(--rule-strong);
+}
+
+.chip--clear {
+  padding: 0 0.5rem;
+  margin-left: -0.3rem;
+}
+
+.chip--now.chip--on {
+  background: var(--c-active);
+  border-color: var(--c-active);
+  color: var(--bg);
+}
+
+/* The real date input covers the chip, invisible, so the picker is native. */
+.chip__date {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .chip:hover {
+    color: var(--fg);
+    border-color: var(--rule-strong);
+  }
 }
 
 /* Recurring schedule (D60): seven square day toggles in the Master hue. The
@@ -1664,17 +1724,34 @@ button.task__mark:active {
 .edit-panel__subtask {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding-left: 0.9rem;
+  gap: 0.5rem;
+  min-height: 2.2rem;
+  padding-left: 0.2rem;
+  border-top: 1px solid var(--rule);
+}
+
+/* A step is a line of text with a small ring, editable in place (D64). */
+.edit-panel__subtask::before {
+  content: '';
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1.5px solid var(--faint);
+  border-radius: 50%;
 }
 
 .edit-panel__subtask input[type='text'] {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0.24rem 0.35rem;
-  background: var(--field-bg);
-  border: 1px solid var(--rule);
-  font-size: 0.86rem;
+  padding: 0.2rem 0.1rem;
+  background: transparent;
+  border: 0;
+  font-size: 0.9rem;
+}
+
+.edit-panel__subtask input[type='text']:focus {
+  outline: none;
+  box-shadow: inset 0 -1px 0 var(--rule);
 }
 
 .edit-panel__add {
@@ -1751,24 +1828,9 @@ button.task__mark:active {
   cursor: default;
 }
 
-/* Delete sits apart, pushed to the trailing edge next to Done. */
+/* Delete sits apart, pushed to the trailing edge. */
 .edit-panel__delete {
   margin-left: auto;
-}
-
-/* Push "Done" to the trailing edge, away from the icon actions. */
-.edit-panel__done {
-  margin-left: auto;
-  font-family: var(--font-display);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0.3rem 0.7rem;
-  background: var(--fg);
-  color: var(--bg);
-  border: 1px solid var(--rule-strong);
-  cursor: pointer;
 }
 
 /* ------------------------------------------------------------- history --- */
@@ -2238,8 +2300,7 @@ kbd {
 .icon-btn,
 .btn,
 .add__submit,
-.add__recur,
-.edit-panel__done {
+.add__recur {
   transition:
     background var(--dur-quick) var(--ease-brisk),
     border-color var(--dur-quick) var(--ease-brisk),
@@ -2252,7 +2313,7 @@ kbd {
 .add__submit:active:not(:disabled),
 .add__recur:active,
 .edit-panel__move:active:not(:disabled),
-.edit-panel__done:active {
+.chip:active {
   transform: translateY(1px);
 }
 
@@ -2269,6 +2330,10 @@ kbd {
   .icon-btn {
     width: 2.4rem;
     height: 2.4rem;
+  }
+
+  .chip {
+    min-height: 2.75rem;
   }
 
   /* A long press needs something to press: History rows are one line of small
