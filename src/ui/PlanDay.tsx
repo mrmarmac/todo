@@ -8,8 +8,8 @@ interface Props {
   /** The day being planned (YYYY-MM-DD). */
   day: string;
   suggestions: DaySuggestion[];
-  /** Start the day with these ids, in Today order. */
-  onStart: (pickedIds: string[]) => void;
+  /** Start the day with these ids in Today order, deleting the let-go ones (D65). */
+  onStart: (pickedIds: string[], letGoIds: string[]) => void;
   onClose: () => void;
 }
 
@@ -39,6 +39,7 @@ export function PlanDay({ day, suggestions, onStart, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef);
   const [picked, setPicked] = useState(() => new Set(suggestions.map((s) => s.task.id)));
+  const [letGo, setLetGo] = useState(() => new Set<string>());
   const { weekday, date } = dayParts(day);
 
   useEffect(() => {
@@ -57,7 +58,18 @@ export function PlanDay({ day, suggestions, onStart, onClose }: Props) {
       return next;
     });
 
-  const pickedIds = suggestions.map((s) => s.task.id).filter((id) => picked.has(id));
+  const toggleLetGo = (id: string) =>
+    setLetGo((g) => {
+      const next = new Set(g);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const pickedIds = suggestions
+    .map((s) => s.task.id)
+    .filter((id) => picked.has(id) && !letGo.has(id));
+  const letGoIds = [...letGo];
 
   return (
     <div
@@ -92,25 +104,62 @@ export function PlanDay({ day, suggestions, onStart, onClose }: Props) {
               <section key={reason} className="plan-day__group">
                 <h3>{title}</h3>
                 <ul>
-                  {rows.map(({ task }) => (
-                    <li key={task.id}>
-                      <label className="plan-day__row">
-                        <span className="task__check">
-                          <input
-                            type="checkbox"
-                            checked={picked.has(task.id)}
-                            onChange={() => toggle(task.id)}
-                          />
-                        </span>
-                        <span className="plan-day__title">{task.title}</span>
-                        {reason === 'overdue' && task.dueDate && (
-                          <span className="plan-day__due">
-                            {formatRelativeDueDate(task.dueDate, day)}
-                          </span>
-                        )}
-                      </label>
-                    </li>
-                  ))}
+                  {rows.map(({ task }) => {
+                    // Only a normal carried task can be let go: a carried
+                    // day-copy is offered as its recurring master, which must
+                    // stay (unticking it is how you skip a repeat).
+                    const canLetGo = reason === 'carried' && !task.isRecurring;
+                    const gone = letGo.has(task.id);
+                    // This rollover will be its (carriedDays + 1)th carry-over.
+                    const putOff = (task.carriedDays ?? 0) + 1;
+                    return (
+                      <li key={task.id} className={gone ? 'plan-day__item--gone' : undefined}>
+                        <div className="plan-day__row">
+                          <label className="plan-day__pick">
+                            <span className="task__check">
+                              <input
+                                type="checkbox"
+                                checked={picked.has(task.id) && !gone}
+                                disabled={gone}
+                                onChange={() => toggle(task.id)}
+                              />
+                            </span>
+                            <span className="plan-day__text">
+                              <span className="plan-day__title">{task.title}</span>
+                              {canLetGo && putOff > 1 && (
+                                <span
+                                  className={
+                                    'plan-day__stuck' + (putOff >= 3 ? ' plan-day__stuck--hot' : '')
+                                  }
+                                >
+                                  {gone ? 'Will be deleted' : `Put off ${putOff} times`}
+                                </span>
+                              )}
+                              {canLetGo && putOff === 1 && gone && (
+                                <span className="plan-day__stuck">Will be deleted</span>
+                              )}
+                            </span>
+                            {reason === 'overdue' && task.dueDate && (
+                              <span className="plan-day__due">
+                                {formatRelativeDueDate(task.dueDate, day)}
+                              </span>
+                            )}
+                          </label>
+                          {canLetGo && (
+                            <button
+                              type="button"
+                              className="plan-day__letgo"
+                              aria-pressed={gone}
+                              aria-label={gone ? `Keep ${task.title}` : `Let go of ${task.title}`}
+                              onClick={() => toggleLetGo(task.id)}
+                            >
+                              {gone ? 'Keep' : 'Let go'}
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             );
@@ -125,7 +174,7 @@ export function PlanDay({ day, suggestions, onStart, onClose }: Props) {
             type="button"
             className="btn-primary"
             autoFocus
-            onClick={() => onStart(pickedIds)}
+            onClick={() => onStart(pickedIds, letGoIds)}
           >
             {pickedIds.length > 0 ? `Start day with ${pickedIds.length}` : 'Start day'}
           </button>

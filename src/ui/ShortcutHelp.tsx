@@ -11,6 +11,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     title: 'Global',
     rows: [
       ['n', 'Focus the “New task” field'],
+      ['f', 'Open Focus: the Now task on its own'],
       ['1 / 2 / 3', 'Collapse / expand Master, Today, Done'],
       ['?', 'Toggle this cheatsheet'],
       ['Esc', 'Close / cancel'],

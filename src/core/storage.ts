@@ -40,7 +40,8 @@ function isTask(value: unknown): value is Task {
     (typeof v.sourceTaskId === 'string' || v.sourceTaskId === null) &&
     Array.isArray(v.subtasks) &&
     v.subtasks.every(isSubtask) &&
-    (v.repeatDays === undefined || (Array.isArray(v.repeatDays) && v.repeatDays.every(isWeekday)))
+    (v.repeatDays === undefined || (Array.isArray(v.repeatDays) && v.repeatDays.every(isWeekday))) &&
+    (v.carriedDays === undefined || (Number.isInteger(v.carriedDays) && (v.carriedDays as number) >= 0))
   );
 }
 

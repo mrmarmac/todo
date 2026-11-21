@@ -19,6 +19,8 @@ export interface Task {
   // Recurring masters only: weekdays it recurs on, 0 = Monday … 6 = Sunday (D60).
   // Optional so data saved before schedules existed still loads.
   repeatDays?: number[];
+  // Times a New Day found this task unfinished in Today and carried it over (D65). Absent = 0.
+  carriedDays?: number;
 }
 
 export type OccurrenceType = 'task' | 'subtask';

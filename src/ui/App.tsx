@@ -43,6 +43,7 @@ import { onStorageFailure } from '../core/safeStorage';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
 import { PlanDay } from './PlanDay';
+import { FocusView } from './FocusView';
 
 /** True when focus is in a text field, so global letter-shortcuts should not fire. */
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -107,6 +108,7 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
+  const [showFocus, setShowFocus] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Ephemeral view preference — not persisted, resets each load.
   const [collapsed, setCollapsed] = useState<CollapsedState>({
@@ -204,6 +206,9 @@ export function App() {
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShowHelp((v) => !v);
+      } else if (e.key === 'f') {
+        e.preventDefault();
+        setShowFocus(true);
       } else if (e.key === 'n') {
         e.preventDefault();
         addInputRef.current?.focus();
@@ -343,9 +348,9 @@ export function App() {
   // New Day goes through Plan my day (D61). No confirm: the undo toast is the
   // safety net (a New Day is fully restorable from the snapshot, including
   // history it pruned).
-  const handleStartDay = (pickedIds: string[]) => {
+  const handleStartDay = (pickedIds: string[], letGoIds: string[]) => {
     setShowPlan(false);
-    runWithUndo('New day started', startDayWith(state, new Date(), pickedIds));
+    runWithUndo('New day started', startDayWith(state, new Date(), pickedIds, letGoIds));
   };
   // The wall clock has moved past the board's day — nudge, never auto-advance (D3).
   const isNewDay = today > state.currentDay;
@@ -415,6 +420,15 @@ export function App() {
         <div className="app__actions">
           <button type="button" className="btn" onClick={() => setShowPlan(true)}>
             New Day
+          </button>
+          <button
+            type="button"
+            className="btn btn--quiet"
+            title="Focus on the Now task (f)"
+            aria-label="Focus on the Now task"
+            onClick={() => setShowFocus(true)}
+          >
+            <Icon name="target" />
           </button>
           {(sync.connected || sync.status === 'error') && (
             <button
@@ -598,6 +612,15 @@ export function App() {
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
       {showSync && (
         <SyncSettings sync={sync} confirm={confirm} onClose={() => setShowSync(false)} />
+      )}
+      {showFocus && (
+        <FocusView
+          tasks={state.tasks}
+          onComplete={handleComplete}
+          onSetActive={(id) => setState((s) => setActive(s, id))}
+          subtaskHandlers={subtaskHandlers}
+          onClose={() => setShowFocus(false)}
+        />
       )}
       {showPlan && (
         <PlanDay

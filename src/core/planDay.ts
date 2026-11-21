@@ -1,5 +1,5 @@
 import type { AppState, Task } from './types';
-import { moveToToday, startNewDay } from './state';
+import { deleteTask, moveToToday, startNewDay } from './state';
 import { isScheduledOn } from './schedule';
 
 /** Why a task is suggested for the new day (D61). */
@@ -50,8 +50,15 @@ export function daySuggestions(state: AppState, day: string): DaySuggestion[] {
  * Start a new day (SPEC §6.7) and put the picked tasks into Today in the order
  * given. Picks are ids from {@link daySuggestions}; after the rollover every
  * one of them sits in Master, so each goes through the ordinary
- * {@link moveToToday} (a recurring master gets a fresh day-copy).
+ * {@link moveToToday} (a recurring master gets a fresh day-copy). Tasks the
+ * user chose to let go of (D65) are deleted after the rollover.
  */
-export function startDayWith(state: AppState, now: Date, pickedIds: string[]): AppState {
-  return pickedIds.reduce((s, id) => moveToToday(s, id), startNewDay(state, now));
+export function startDayWith(
+  state: AppState,
+  now: Date,
+  pickedIds: string[],
+  letGoIds: string[] = [],
+): AppState {
+  const rolled = letGoIds.reduce((s, id) => deleteTask(s, id), startNewDay(state, now));
+  return pickedIds.reduce((s, id) => moveToToday(s, id), rolled);
 }

@@ -45,6 +45,12 @@ copy changes more often than the structure:
     it; set it with the native value setter + `change`), `.chip--clear`,
     Repeat (Master, `aria-pressed`), `.chip--now` (Today). There is no Done
     button (D64): close with Escape, Enter in the title, or a click outside.
+  - **Plan my day** (New Day button / `.app__new-day .btn`): rows `.plan-day__row`,
+    put-off label `.plan-day__stuck` (`--hot` from 3), `.plan-day__letgo`
+    toggles Let go / Keep, start is `.plan-day__actions .btn-primary` (D65).
+  - **Focus**: header target button (`aria-label="Focus on the Now task"`) or
+    the `f` key opens `.focus`; `.focus__done`, `.focus__later` (Not now),
+    `.focus__pick` rows, `.focus__step input` ticks steps (D66).
   - **Add to Today**: `.col--today .add__input` (`aria-label="New task for
     Today"`) — same form as Master's, no Repeat button (D63).
   - **Move to Today** (Master, desktop): `button.task__move` (`aria-label="Move

@@ -40,6 +40,7 @@ No reminders, notifications, tags, notes, attachments, or search. Personal use o
 - `dueDate` — date or `null`
 - `column` — `master` | `today` | `done`
 - `isRecurring`
+- `carriedDays` — optional; how many New Days have found this task unfinished in Today and carried it over (§6.7)
 - `repeatDays` — optional; recurring masters only: weekdays it recurs on, 0 = Monday … 6 = Sunday (§8)
 - `isActive`
 - `sourceTaskId` — for a recurring day-copy, the id of its master task; otherwise `null`
@@ -121,6 +122,8 @@ A **Clear** button moves all currently completed tasks — and their completed s
 - **Due today** — non-recurring Master tasks due on the new day.
 - **Scheduled** — recurring masters whose `repeatDays` include the new day's weekday (§8).
 
+**Stuck tasks and letting go (D65).** Each New Day that returns an unfinished task from Today adds one to its `carriedDays` (never reset; a task gone from the board takes its count with it). On the planning screen an Unfinished task that has been put off before says so ("Put off 3 times"), in vermilion from the third time. Every Unfinished one-off task has a **Let go** control: a let-go task is deleted when the day starts (the start is undoable as a whole). Unticking instead leaves it in Master. Recurring masters cannot be let go here — unticking skips the repeat.
+
 "Start day" runs the steps below, then moves the ticked tasks into Today in the listed order. "Not yet" closes the screen and changes nothing. The whole start is undoable from the undo toast. With nothing to suggest, the screen says so and starting gives an empty Today.
 
 In order:
@@ -132,6 +135,10 @@ In order:
 
 ### 6.8 Set Active
 Set one task or subtask as active. Clears any previous active item. The active item must be in Today (subtask: parent in Today), and a completed subtask cannot be set active. Highlighted in the UI. Clicking the active item again un-sets it.
+
+### 6.9 Focus
+
+**Focus (D66)** shows the Now item's task alone, full screen: its title at large scale, its steps (tickable), a **Done** button (disabled while steps are open, with a note saying how many remain) and **Not now** (clears the Now flag). Below it, "Up next" lists the other Today tasks; picking one makes it Now. With no Now item — none set, or the Now task was just finished — Focus asks "What now?" and offers Today's tasks; it never advances to the next task by itself. With nothing in Today it says the day is clear. Opened from the header (target icon) or the `f` key; Escape or × closes it.
 
 ## 7. Sorting
 

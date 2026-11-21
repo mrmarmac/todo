@@ -496,13 +496,15 @@ export function startNewDay(state: AppState, now: Date): AppState {
   const tasks = clearAllActiveFlags(collapsed.tasks) // step 4
     // Step 2: drop unfinished day-copies left in Today.
     .filter((t) => !(t.column === 'today' && t.sourceTaskId !== null))
-    // Step 3: return remaining Today tasks to Master, resetting subtasks.
+    // Step 3: return remaining Today tasks to Master, resetting subtasks and
+    // counting the carry-over (D65).
     .map((t) =>
       t.column === 'today'
         ? {
             ...t,
             column: 'master' as const,
             subtasks: t.subtasks.map((s) => ({ ...s, isCompleted: false })),
+            carriedDays: (t.carriedDays ?? 0) + 1,
           }
         : t,
     );

@@ -48,6 +48,8 @@ Rules:
 - **Plan my day.** A modal on the shared modal surface. Its one expressive move is the weekday name in display type at scale (`clamp(2.2rem, 9vw, 3rem)`); everything else stays small and ruled. Picks tick in the Today hue, not sage, because ticking here means "into Today", not "done" (D61).
 - **New-day band.** A quiet band under the header with a 4px Today-coloured inset edge (D61).
 - **Editor chips (D64).** Details in the inline editor are chips: 3px corners, 1px `--rule` border, body type at 0.84rem, `--muted` until set; set = `--fg` text with a `--rule-strong` border. The Now chip, when on, fills with `--c-active` (vermilion is reserved for the active item). 2.1rem tall, 2.75rem (44px) on touch. The editor title is borderless, in the row's own type; steps are plain lines with a small ring.
+- **Stuck label (D65).** On Plan my day, "Put off N times" in `--font-data` 0.7rem, `--muted`; from the third time `--c-active`. A let-go row strikes its title in `--faint`; Let go / Keep is a small uppercase display-type text button, 44px tall.
+- **Focus (D66).** Full screen on `--bg`, content capped at 42rem. Its one expressive move is the task title in display type at `clamp(2.2rem, 9vw, 4rem)`. "Now" label in `--c-active`. Done is a full-width ink block (`--fg` fill, `--bg` text), Not now an outlined twin; both 3.5rem tall. Up next rows are ruled lines with an ochre-text "Make this now".
 - **Schedule toggles.** Seven 2rem square day toggles, filled with the Master hue when on (D60).
 - **Padding.** Compact rows (about 0.2–0.45rem vertical) inside generous column gutters (`clamp(0.85rem, 2vw, 1.4rem)`); dialogs use 1–1.25rem. The header respects `env(safe-area-inset-*)`.
 - **Must work at 375px wide** (iPhone 13 mini) and on macOS.
